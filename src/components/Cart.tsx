@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
 
 export function Cart() {
   const {
@@ -14,6 +15,8 @@ export function Cart() {
     decreaseQuantity,
     getTotal,
   } = useCart();
+  
+  const navigate = useNavigate();
 
   if (cart.length === 0) {
     return (
@@ -106,7 +109,10 @@ export function Cart() {
           <span>Total</span>
           <span className="text-pdv-blue">R$ {getTotal().toFixed(2)}</span>
         </div>
-        <Button className="w-full bg-pdv-green hover:bg-pdv-green/90 text-white">
+        <Button 
+          className="w-full bg-pdv-green hover:bg-pdv-green/90 text-white"
+          onClick={() => navigate('/checkout')}
+        >
           Finalizar Pedido
         </Button>
       </CardFooter>
