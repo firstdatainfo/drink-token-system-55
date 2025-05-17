@@ -20,7 +20,7 @@ export function ProductCard({
         <div>
           <h3 className="font-medium text-center">{product.name}</h3>
           <div className="flex flex-col mt-2">
-            <p className="text-xl text-pdv-blue text-center font-bold px-0">
+            <p className="text-xl text-pdv-blue text-center font-bold px-[12px]">
               R$ {product.price.toFixed(2)}
             </p>
             <div className="flex justify-end mt-1">
