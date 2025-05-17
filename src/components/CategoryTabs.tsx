@@ -28,15 +28,17 @@ export function CategoryTabs({ categories }: CategoryTabsProps) {
         </ScrollArea>
       </div>
       
-      {categories.map((category) => (
-        <TabsContent key={category.id} value={category.id.toString()}>
-          <ProductGrid
-            products={products.filter(
-              (product) => product.category === category.name
-            )}
-          />
-        </TabsContent>
-      ))}
+      <div className="mt-4">
+        {categories.map((category) => (
+          <TabsContent key={category.id} value={category.id.toString()}>
+            <ProductGrid
+              products={products.filter(
+                (product) => product.category === category.name
+              )}
+            />
+          </TabsContent>
+        ))}
+      </div>
     </Tabs>
   );
 }
