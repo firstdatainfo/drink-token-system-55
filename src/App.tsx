@@ -11,6 +11,7 @@ import Admin from "./pages/admin/Admin";
 import Products from "./pages/admin/Products";
 import Categories from "./pages/admin/Categories";
 import Reports from "./pages/admin/Reports";
+import PrinterSettings from "./pages/admin/PrinterSettings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/admin/products" element={<Products />} />
             <Route path="/admin/categories" element={<Categories />} />
             <Route path="/admin/reports" element={<Reports />} />
+            <Route path="/admin/printer-settings" element={<PrinterSettings />} />
             <Route path="/login" element={<Login />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

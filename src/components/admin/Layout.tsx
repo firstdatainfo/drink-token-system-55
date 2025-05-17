@@ -10,7 +10,8 @@ import {
   Settings,
   LogOut, 
   Menu, 
-  X 
+  X,
+  Printer 
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +49,11 @@ export function Layout({ children }: LayoutProps) {
       name: "Relatórios",
       path: "/admin/reports",
       icon: <BarChart className="h-5 w-5" />,
+    },
+    {
+      name: "Impressão",
+      path: "/admin/printer-settings",
+      icon: <Printer className="h-5 w-5" />,
     },
   ];
 

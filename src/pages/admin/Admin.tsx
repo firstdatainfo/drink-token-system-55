@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Printer, CreditCard, Database, Rocket } from "lucide-react";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -76,6 +77,76 @@ const Admin = () => {
         </CardContent>
       </Card>
       
+      {/* Configurações e Integrações */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Configurações e Integrações</CardTitle>
+          <CardDescription>Configure impressoras e integrações</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Configurações de Impressora */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <Printer className="h-5 w-5 mr-2" />
+                  Configurações de Impressão
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-2 text-sm text-gray-500">Modelos de Impressora:</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button variant="outline" size="sm">48mm</Button>
+                  <Button variant="outline" size="sm">58mm</Button>
+                  <Button variant="outline" size="sm">80mm</Button>
+                </div>
+                <Button 
+                  variant="secondary" 
+                  className="w-full"
+                  onClick={() => navigate("/admin/printer-settings")}
+                >
+                  Configurar Impressora
+                </Button>
+              </CardContent>
+            </Card>
+            
+            {/* Integrações */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Integrações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CreditCard className="h-5 w-5 mr-2 text-pdv-blue" />
+                      <span>Stone Pagamentos</span>
+                    </div>
+                    <Button variant="outline" size="sm">Conectar</Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Database className="h-5 w-5 mr-2 text-pdv-green" />
+                      <span>Supabase</span>
+                    </div>
+                    <Button variant="outline" size="sm">Conectar</Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Rocket className="h-5 w-5 mr-2 text-black" />
+                      <span>Vercel</span>
+                    </div>
+                    <Button variant="outline" size="sm">Conectar</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="col-span-1 md:col-span-3">
           <CardHeader>
@@ -90,6 +161,9 @@ const Admin = () => {
             </Button>
             <Button onClick={() => navigate("/admin/reports")}>
               Relatórios de Vendas
+            </Button>
+            <Button onClick={() => navigate("/admin/printer-settings")}>
+              Configurações de Impressão
             </Button>
             <Button onClick={() => navigate("/")}>
               Ir para PDV
