@@ -13,7 +13,7 @@ export function CategoryTabs({ categories }: CategoryTabsProps) {
   return (
     <Tabs defaultValue={categories[0].id.toString()} className="w-full">
       <div className="relative">
-        <ScrollArea className="w-full whitespace-nowrap pb-3" orientation="horizontal">
+        <ScrollArea className="w-full whitespace-nowrap pb-3">
           <TabsList className="inline-flex w-max px-1 bg-pdv-gray rounded-lg">
             {categories.map((category) => (
               <TabsTrigger
