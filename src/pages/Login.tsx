@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ThumbsUp } from "lucide-react";
+import { ThumbsUp, Home } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -50,6 +50,10 @@ const Login = () => {
   const handleVote = () => {
     setVoteCount(prev => prev + 1);
     toast.success(`Obrigado pelo seu voto! Total: ${voteCount + 1}`);
+  };
+
+  const handleGoHome = () => {
+    navigate("/");
   };
 
   return (
@@ -99,13 +103,20 @@ const Login = () => {
           <p className="text-sm text-muted-foreground">
             Área restrita para administradores do sistema
           </p>
-          <div className="flex items-center justify-center w-full">
+          <div className="flex items-center justify-center w-full gap-2">
             <Button 
               variant="outline" 
               className="bg-green-500 text-white hover:bg-green-600"
               onClick={handleVote}
             >
               <ThumbsUp className="mr-2" /> Votar ({voteCount})
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-gray-100 text-pdv-blue hover:bg-gray-200"
+              onClick={handleGoHome}
+            >
+              <Home className="mr-2" /> Voltar para Home
             </Button>
           </div>
         </CardFooter>
@@ -115,3 +126,4 @@ const Login = () => {
 };
 
 export default Login;
+
