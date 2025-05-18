@@ -105,19 +105,27 @@ const Admin = () => {
         if (itemsError) throw itemsError;
         
         // Calcular total de vendas da semana
-        const totalSales = weekOrders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+        const totalSales = weekOrders?.reduce((sum, order) => {
+          // Garantir que order.total_amount seja convertido para número
+          const amount = typeof order.total_amount === 'number' ? order.total_amount : 
+                         Number(order.total_amount) || 0;
+          return sum + amount;
+        }, 0) || 0;
         
         // Contar pedidos de hoje
         const ordersToday = todayOrders?.length || 0;
         
         // Encontrar produto mais vendido
-        const productCounts = {};
+        const productCounts: Record<string, number> = {};
         orderItems?.forEach(item => {
           const productName = item.product_name;
           if (!productCounts[productName]) {
             productCounts[productName] = 0;
           }
-          productCounts[productName] += item.quantity;
+          // Garantir que item.quantity seja convertido para número
+          const quantity = typeof item.quantity === 'number' ? item.quantity : 
+                          Number(item.quantity) || 0;
+          productCounts[productName] += quantity;
         });
         
         let topProduct = "Nenhum";
