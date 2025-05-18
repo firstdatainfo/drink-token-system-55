@@ -21,25 +21,38 @@ const Login = () => {
   // Verificar se já existe uma sessão ativa ao carregar a página
   useEffect(() => {
     const checkExistingSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // Verificar se o usuário é um administrador
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .eq("role", "admin");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session && session.user) {
+          console.log("Sessão encontrada:", session.user.email);
+          
+          // Verificar se o usuário é um administrador
+          const { data: roleData, error: roleError } = await supabase
+            .from("user_roles")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .eq("role", "admin");
 
-        if (roleError) {
-          console.error("Erro ao verificar permissões:", roleError);
-          return;
-        }
+          if (roleError) {
+            console.error("Erro ao verificar permissões:", roleError);
+            return;
+          }
 
-        if (roleData && roleData.length > 0) {
-          // Se for administrador, redirecionar para área admin
-          navigate("/admin");
+          if (roleData && roleData.length > 0) {
+            // Se for administrador, armazenar na sessão local e redirecionar
+            localStorage.setItem("supabase_auth_session", JSON.stringify({
+              user: session.user,
+              session: session,
+              isAdmin: true
+            }));
+            
+            console.log("Usuário autenticado como admin, redirecionando...");
+            navigate("/admin");
+          }
         }
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
       }
     };
 
@@ -66,7 +79,14 @@ const Login = () => {
 
         if (error) {
           console.error("Erro ao registrar:", error);
-          toast.error(`Erro ao registrar: ${error.message}`);
+          
+          if (error.message.includes("already registered")) {
+            toast.error("Este email já está registrado. Tente fazer login.");
+            setIsRegister(false);
+          } else {
+            toast.error(`Erro ao registrar: ${error.message}`);
+          }
+          
           setIsLoading(false);
           return;
         }
@@ -77,39 +97,53 @@ const Login = () => {
           
           // Aguardar um momento para a trigger completar e tentar login automático
           setTimeout(async () => {
-            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-              email,
-              password
-            });
+            try {
+              const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                email,
+                password
+              });
 
-            if (!loginError && loginData.user) {
-              // Verificar se o usuário tem o papel de admin
-              const { data: roleData } = await supabase
-                .from("user_roles")
-                .select("*")
-                .eq("user_id", loginData.user.id)
-                .eq("role", "admin");
-
-              if (roleData && roleData.length > 0) {
-                localStorage.setItem("supabase_auth_session", JSON.stringify({
-                  user: loginData.user,
-                  session: loginData.session,
-                  isAdmin: true
-                }));
-                
-                toast.success("Login realizado com sucesso como administrador!");
-                navigate("/admin");
-              } else {
-                toast.info("O papel de admin será atribuído em breve. Tente fazer login novamente em alguns instantes.");
+              if (loginError) {
+                console.error("Erro ao fazer login automático:", loginError);
+                toast.error("Não foi possível fazer login automático. Tente fazer login manualmente.");
+                setIsLoading(false);
+                return;
               }
+
+              if (loginData && loginData.user) {
+                // Verificar se o usuário tem o papel de admin
+                const { data: roleData } = await supabase
+                  .from("user_roles")
+                  .select("*")
+                  .eq("user_id", loginData.user.id)
+                  .eq("role", "admin");
+
+                if (roleData && roleData.length > 0) {
+                  localStorage.setItem("supabase_auth_session", JSON.stringify({
+                    user: loginData.user,
+                    session: loginData.session,
+                    isAdmin: true
+                  }));
+                  
+                  toast.success("Login realizado com sucesso como administrador!");
+                  navigate("/admin");
+                } else {
+                  toast.info("O papel de admin será atribuído em breve. Tente fazer login novamente em alguns instantes.");
+                  setIsLoading(false);
+                }
+              }
+            } catch (err) {
+              console.error("Erro no login automático:", err);
+              toast.error("Ocorreu um erro. Tente fazer login manualmente.");
+              setIsLoading(false);
             }
-          }, 1500);
+          }, 2000);
         } else {
           toast.success("Registro realizado com sucesso! Verifique seu email para confirmar a conta.");
+          setIsRegister(false);
+          setIsLoading(false);
         }
         
-        setIsRegister(false);
-        setIsLoading(false);
         return;
       }
       
@@ -167,14 +201,15 @@ const Login = () => {
           console.log("Usuário não tem permissões de administrador:", data.user.email);
           await supabase.auth.signOut();
           localStorage.removeItem("supabase_auth_session");
+          setIsLoading(false);
         }
       } else {
         toast.error("Credenciais inválidas");
+        setIsLoading(false);
       }
     } catch (error: any) {
       console.error("Erro de login:", error);
       toast.error(error?.message || "Erro ao fazer login");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -284,6 +319,17 @@ const Login = () => {
           </div>
         </CardFooter>
       </Card>
+
+      {/* Registros de usuário e mensagens informativas */}
+      {isRegister && email === "rodrigodev@yahoo.com" && (
+        <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 p-4 rounded-md max-w-xs shadow-lg">
+          <p className="font-medium">Informação importante:</p>
+          <p className="text-sm mt-1">
+            Ao registrar com o email <strong>rodrigodev@yahoo.com</strong>, você 
+            receberá automaticamente permissões de administrador.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

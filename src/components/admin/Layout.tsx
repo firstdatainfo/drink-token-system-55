@@ -43,34 +43,42 @@ export function Layout({ children }: LayoutProps) {
         if (!userId) {
           const storedSession = localStorage.getItem("supabase_auth_session");
           if (storedSession) {
-            const parsedSession = JSON.parse(storedSession);
-            userId = parsedSession.user?.id;
-            
-            // Se temos dados de sessão no localStorage mas não no Supabase,
-            // tentamos estabelecer a sessão novamente
-            if (userId && parsedSession.session) {
-              try {
-                const { data, error } = await supabase.auth.setSession({
-                  access_token: parsedSession.session.access_token,
-                  refresh_token: parsedSession.session.refresh_token
-                });
-                
-                isSessionValid = !!data.session && !error;
-                
-                if (error) {
-                  console.error("Erro ao restaurar sessão:", error);
+            try {
+              const parsedSession = JSON.parse(storedSession);
+              userId = parsedSession.user?.id;
+              
+              // Se temos dados de sessão no localStorage mas não no Supabase,
+              // tentamos estabelecer a sessão novamente
+              if (userId && parsedSession.session) {
+                try {
+                  const { data, error } = await supabase.auth.setSession({
+                    access_token: parsedSession.session.access_token,
+                    refresh_token: parsedSession.session.refresh_token
+                  });
+                  
+                  isSessionValid = !!data.session && !error;
+                  
+                  if (error) {
+                    console.error("Erro ao restaurar sessão:", error);
+                    localStorage.removeItem("supabase_auth_session");
+                    isSessionValid = false;
+                  }
+                } catch (setSessionError) {
+                  console.error("Erro ao restaurar sessão:", setSessionError);
                   localStorage.removeItem("supabase_auth_session");
+                  isSessionValid = false;
                 }
-              } catch (setSessionError) {
-                console.error("Erro ao restaurar sessão:", setSessionError);
-                localStorage.removeItem("supabase_auth_session");
               }
+            } catch (parseError) {
+              console.error("Erro ao analisar dados da sessão:", parseError);
+              localStorage.removeItem("supabase_auth_session");
+              isSessionValid = false;
             }
           }
         }
 
         if (!userId || !isSessionValid) {
-          toast.error("Sessão expirada. Por favor, faça login novamente.");
+          toast.error("Sessão expirada ou inválida. Por favor, faça login novamente.");
           localStorage.removeItem("supabase_auth_session");
           navigate("/login");
           return;
@@ -100,6 +108,7 @@ export function Layout({ children }: LayoutProps) {
           return;
         }
 
+        console.log("Verificação de admin concluída com sucesso");
         setIsVerifying(false);
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
