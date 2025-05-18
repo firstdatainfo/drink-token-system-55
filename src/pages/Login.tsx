@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,35 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+
+  // Verificar se já existe uma sessão ativa ao carregar a página
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Verificar se o usuário é um administrador
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .eq("role", "admin");
+
+        if (roleError) {
+          console.error("Erro ao verificar permissões:", roleError);
+          return;
+        }
+
+        if (roleData && roleData.length > 0) {
+          // Se for administrador, redirecionar para área admin
+          navigate("/admin");
+        }
+      }
+    };
+
+    checkExistingSession();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +63,17 @@ const Login = () => {
       });
 
       if (error) {
-        throw error;
+        console.error("Erro de login:", error);
+        setLoginAttempts(prev => prev + 1);
+        
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Credenciais inválidas. Por favor, verifique seu email e senha.");
+        } else {
+          toast.error(`Erro ao fazer login: ${error.message}`);
+        }
+        
+        setIsLoading(false);
+        return;
       }
 
       // Verificar se o usuário é um administrador
@@ -68,6 +107,7 @@ const Login = () => {
         } else {
           // Mostrar uma mensagem mais específica sobre a falta de permissões
           toast.error("Você não possui permissões de administrador");
+          console.log("Usuário não tem permissões de administrador:", data.user.email);
           await supabase.auth.signOut();
           localStorage.removeItem("supabase_auth_session");
         }
@@ -131,6 +171,14 @@ const Login = () => {
               >
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
+              
+              {loginAttempts > 0 && (
+                <p className="text-xs text-red-500 text-center mt-2">
+                  {loginAttempts === 1 ? 
+                    "Tentativa de login falhou. Verifique suas credenciais." : 
+                    `${loginAttempts} tentativas de login falharam. Verifique suas permissões.`}
+                </p>
+              )}
             </div>
           </form>
         </CardContent>
