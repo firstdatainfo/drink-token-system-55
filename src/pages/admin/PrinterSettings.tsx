@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { Printer, Save, FileDown } from "lucide-react";
+import { Printer, Save, FileDown, QrCode, Barcode } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type PrinterModel = "48mm" | "58mm" | "80mm";
 type TemplateType = "default" | "custom";
@@ -23,6 +25,9 @@ interface PrinterSettingsFormValues {
   templateType: TemplateType;
   showLogo: boolean;
   showOrderNumber: boolean;
+  showQRCode: boolean;
+  showBarcode: boolean;
+  securityCodeText: string;
   customHeader: string;
   customFooter: string;
 }
@@ -40,6 +45,9 @@ const PrinterSettings = () => {
       templateType: "default",
       showLogo: true,
       showOrderNumber: true,
+      showQRCode: true,
+      showBarcode: true,
+      securityCodeText: "Código de segurança",
       customHeader: "FICHA DE PEDIDO",
       customFooter: "Obrigado pela preferência!",
     },
@@ -270,6 +278,71 @@ const PrinterSettings = () => {
                             )}
                           />
                         </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="showQRCode"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">
+                                    Mostrar QR Code
+                                  </FormLabel>
+                                  <FormDescription>
+                                    Exibe um QR Code para validação do pedido
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="showBarcode"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">
+                                    Mostrar Código de Barras
+                                  </FormLabel>
+                                  <FormDescription>
+                                    Exibe um código de barras na ficha
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="securityCodeText"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Texto do Código de Segurança</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                              <FormDescription>
+                                Texto exibido acima do código de barras
+                              </FormDescription>
+                            </FormItem>
+                          )}
+                        />
                         
                         <FormField
                           control={form.control}
@@ -354,9 +427,63 @@ const PrinterSettings = () => {
                     <div>RECEBIDO: R$ 50,00</div>
                     <div>TROCO: R$ 10,00</div>
                     <div>--------------------------------</div>
-                    <div className="text-center mt-2">Obrigado pela preferência!</div>
+                    {form.watch("showQRCode") && (
+                      <div className="mt-2 text-center">
+                        <div className="flex justify-center mb-1">
+                          <QrCode size={80} className="my-2" />
+                        </div>
+                        <div className="text-center text-xs mb-1">Escaneie o QR Code para validar</div>
+                      </div>
+                    )}
+                    {form.watch("showBarcode") && (
+                      <div className="mt-2 text-center">
+                        <div className="text-center text-xs mb-1">{form.watch("securityCodeText")}</div>
+                        <div className="flex justify-center">
+                          <Barcode size={80} className="my-1" />
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-center mt-2">{form.watch("customFooter")}</div>
                   </div>
                 </div>
+              </div>
+              
+              <div className="mt-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      Visualizar detalhes da ficha
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Elementos da ficha</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Elementos visíveis na ficha de impressão
+                        </p>
+                      </div>
+                      <div className="grid gap-2">
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <Label htmlFor="logoStatus">Logo:</Label>
+                          <div id="logoStatus" className="font-medium">{form.watch("showLogo") ? "Visível" : "Oculto"}</div>
+                        </div>
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <Label htmlFor="orderNumStatus">Número do Pedido:</Label>
+                          <div id="orderNumStatus" className="font-medium">{form.watch("showOrderNumber") ? "Visível" : "Oculto"}</div>
+                        </div>
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <Label htmlFor="qrStatus">QR Code:</Label>
+                          <div id="qrStatus" className="font-medium">{form.watch("showQRCode") ? "Visível" : "Oculto"}</div>
+                        </div>
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <Label htmlFor="barcodeStatus">Código de Barras:</Label>
+                          <div id="barcodeStatus" className="font-medium">{form.watch("showBarcode") ? "Visível" : "Oculto"}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardContent>
           </Card>
