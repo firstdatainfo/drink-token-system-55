@@ -2,18 +2,19 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  LayoutDashboard, 
-  Package, 
-  Tag, 
-  BarChart, 
+import {
+  LayoutDashboard,
+  Package,
+  Tag,
+  BarChart,
   Settings,
-  LogOut, 
-  Menu, 
+  LogOut,
+  Menu,
   X,
-  Printer 
+  Printer
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,15 +24,47 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
 
+  // Nova proteção para acesso de admin
   useEffect(() => {
-    // Verificar se o usuário está logado ao carregar o componente
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    
-    if (!user.isLoggedIn) {
-      toast.error("Acesso restrito. Por favor, faça login.");
-      navigate("/login");
+    let ignore = false;
+
+    async function checkAdminRole() {
+      setIsVerifying(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        toast.error("Acesso restrito. Faça login.");
+        navigate("/login");
+        return;
+      }
+
+      // Verifica se o usuário tem o papel 'admin'
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (ignore) return;
+
+      if (!data || data.role !== "admin") {
+        toast.error("Você não tem permissão para acessar esta área.");
+        navigate("/login");
+        return;
+      }
+
+      setIsVerifying(false);
     }
+
+    checkAdminRole();
+
+    return () => {
+      ignore = true;
+    };
   }, [navigate]);
 
   const handleLogout = () => {
@@ -72,6 +105,15 @@ export function Layout({ children }: LayoutProps) {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  if (isVerifying) {
+    // Exibir um loading enquanto verifica
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center text-lg text-pdv-blue animate-pulse">Carregando verificação...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Menu Button */}
@@ -82,20 +124,16 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Sidebar - Mobile (overlay) */}
-      <div 
-        className={`lg:hidden fixed inset-0 z-40 transition-all duration-300 ${
-          isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 transition-all duration-300 ${isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`}
         onClick={toggleMobileMenu}
       >
         <div className="absolute inset-0 bg-black/50" />
       </div>
 
       {/* Sidebar Content */}
-      <div 
-        className={`fixed lg:static z-40 h-full w-64 bg-white border-r shadow-sm transform transition-transform duration-300 ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+      <div
+        className={`fixed lg:static z-40 h-full w-64 bg-white border-r shadow-sm transform transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         <div className="p-6">
           <h1 className="text-xl font-bold text-pdv-blue">Admin Panel</h1>
