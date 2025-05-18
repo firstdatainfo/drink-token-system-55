@@ -199,7 +199,9 @@ const Products = () => {
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     
+    // Accept both comma and period as decimal separators
     if (value === '' || /^\d*[.,]?\d*$/.test(value)) {
+      // Convert to number with . as decimal separator
       const numericValue = parseFloat(value.replace(',', '.')) || 0;
       setFormData({...formData, price: numericValue});
     }
