@@ -172,8 +172,6 @@ export function Layout({ children }: LayoutProps) {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Removida a verificação que causava a tela de carregamento
-
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Menu Button */}
@@ -183,20 +181,22 @@ export function Layout({ children }: LayoutProps) {
         </Button>
       </div>
 
-      {/* Sidebar - Mobile (overlay) */}
-      <div
-        className={`lg:hidden fixed inset-0 z-40 transition-all duration-300 ${isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`}
-        onClick={toggleMobileMenu}
-      >
-        <div className="absolute inset-0 bg-black/50" />
-      </div>
+      {/* Mobile Overlay Background */}
+      {isMobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={toggleMobileMenu}
+        />
+      )}
 
-      {/* Sidebar Content */}
+      {/* Sidebar */}
       <div
-        className={`fixed lg:static z-40 h-full w-64 bg-white border-r shadow-sm transform transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+        className={`fixed lg:static z-40 h-full w-64 bg-white border-r shadow-sm transition-transform duration-300 ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
       >
         <div className="p-6">
-          <h1 className="text-xl font-bold text-pdv-blue">Painel de Admin</h1>
+          <h1 className="text-xl font-bold text-blue-600">Painel de Admin</h1>
         </div>
 
         <nav className="px-4 mt-6 space-y-1">
@@ -206,7 +206,7 @@ export function Layout({ children }: LayoutProps) {
               to={item.path}
               className={`flex items-center px-4 py-3 rounded-md transition-colors ${
                 location.pathname === item.path
-                  ? "bg-pdv-blue text-white"
+                  ? "bg-blue-600 text-white"
                   : "hover:bg-gray-100"
               }`}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -229,7 +229,7 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-x-hidden bg-gray-50">
+      <div className="flex-1 lg:ml-64">
         <header className="bg-white shadow-sm h-16 flex items-center px-6 sticky top-0 z-10">
           <div className="w-full flex justify-end">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
