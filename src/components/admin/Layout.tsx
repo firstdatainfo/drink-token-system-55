@@ -1,3 +1,4 @@
+
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -27,50 +28,58 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // Verificação de acesso admin usando staleTime maior e configurações otimizadas
-  const { isLoading } = useQuery({
-    queryKey: ['adminAccess'],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error("Por favor, faça login para acessar a área administrativa");
-        navigate("/login");
-        return false;
-      }
-      
-      const userEmail = session.user.email;
-      
-      // Caso especial para rodrigodev@yahoo.com
-      if (userEmail === "rodrigodev@yahoo.com") {
-        return true;
-      }
-      
-      // Verificação de admin para outros usuários
-      const { data: roleData, error: roleError } = await supabase
-        .from("user_roles")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .eq("role", "admin");
+  // Verificação de acesso admin uma única vez
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
         
-      if (roleError) {
-        throw new Error("Erro ao verificar permissões");
-      }
-      
-      if (!roleData || roleData.length === 0) {
-        toast.error("Você não tem permissão para acessar esta área");
+        if (!session) {
+          toast.error("Por favor, faça login para acessar a área administrativa");
+          navigate("/login");
+          return;
+        }
+        
+        const userEmail = session.user.email;
+        
+        // Caso especial para rodrigodev@yahoo.com
+        if (userEmail === "rodrigodev@yahoo.com") {
+          setIsAuthChecking(false);
+          return;
+        }
+        
+        // Verificação de admin para outros usuários
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .eq("role", "admin");
+          
+        if (roleError) {
+          console.error("Erro ao verificar permissões:", roleError);
+          toast.error("Erro ao verificar permissões");
+          navigate("/login");
+          return;
+        }
+        
+        if (!roleData || roleData.length === 0) {
+          toast.error("Você não tem permissão para acessar esta área");
+          navigate("/login");
+          return;
+        }
+        
+        setIsAuthChecking(false);
+      } catch (error) {
+        console.error("Erro na verificação de autenticação:", error);
+        toast.error("Erro na verificação de autenticação");
         navigate("/login");
-        return false;
       }
-      
-      return true;
-    },
-    retry: false,
-    staleTime: 60 * 60 * 1000, // 1 hora para evitar verificações frequentes
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+    };
+
+    checkAdminAccess();
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
@@ -132,7 +141,7 @@ export function Layout({ children }: LayoutProps) {
   };
 
   // Se estiver carregando, mostre um indicador simples
-  if (isLoading) {
+  if (isAuthChecking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">

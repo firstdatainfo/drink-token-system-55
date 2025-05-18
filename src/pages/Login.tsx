@@ -18,6 +18,7 @@ const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [debugMessage, setDebugMessage] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Debug helper
   const addDebug = (message) => {
@@ -25,8 +26,10 @@ const Login = () => {
     setDebugMessage(prev => prev + "\n" + message);
   };
 
-  // Check for existing session on component mount
+  // Check for existing session on component mount - only once
   useEffect(() => {
+    if (authChecked) return;
+    
     const checkSession = async () => {
       try {
         if (debugMode) addDebug("Checking for existing session...");
@@ -60,14 +63,17 @@ const Login = () => {
         } else {
           if (debugMode) addDebug("No active session found");
         }
+        
+        setAuthChecked(true);
       } catch (error) {
         console.error("Session check error:", error);
         if (debugMode) addDebug(`Session check error: ${error.message}`);
+        setAuthChecked(true);
       }
     };
     
     checkSession();
-  }, [navigate, debugMode]);
+  }, [navigate, debugMode, authChecked]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
