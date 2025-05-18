@@ -37,6 +37,8 @@ const Login = () => {
         throw error;
       }
 
+      console.log("Login bem-sucedido:", data);
+
       // Verificar se o usuário é um administrador
       if (data.user) {
         const { data: roleData, error: roleError } = await supabase
@@ -46,6 +48,8 @@ const Login = () => {
           .eq("role", "admin")
           .maybeSingle();
 
+        console.log("Dados de role:", roleData, "Erro de role:", roleError);
+
         if (roleError) {
           console.error("Erro ao verificar papel do usuário:", roleError);
           toast.error("Erro ao verificar permissões de administrador");
@@ -54,6 +58,13 @@ const Login = () => {
         }
 
         if (roleData?.role === "admin") {
+          // Armazenar a sessão do usuário localmente para persistência
+          localStorage.setItem("supabase_auth_session", JSON.stringify({
+            user: data.user,
+            session: data.session,
+            isAdmin: true
+          }));
+          
           toast.success("Login realizado com sucesso!");
           navigate("/admin");
         } else {

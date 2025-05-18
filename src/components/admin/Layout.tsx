@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,38 +25,66 @@ export function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
 
-  // Nova proteção para acesso de admin
+  // Nova proteção para acesso de admin com verificação de sessão local
   useEffect(() => {
     let ignore = false;
 
     async function checkAdminRole() {
       setIsVerifying(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      
+      try {
+        // Primeiro tenta obter a sessão do Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        let userId = session?.user?.id;
 
-      if (!userId) {
-        toast.error("Acesso restrito. Faça login.");
+        // Se não encontrou sessão no Supabase, verifica o localStorage
+        if (!userId) {
+          const storedSession = localStorage.getItem("supabase_auth_session");
+          if (storedSession) {
+            const parsedSession = JSON.parse(storedSession);
+            userId = parsedSession.user?.id;
+            
+            // Se temos dados de sessão no localStorage mas não no Supabase,
+            // tentamos estabelecer a sessão novamente
+            if (userId && parsedSession.session) {
+              await supabase.auth.setSession({
+                access_token: parsedSession.session.access_token,
+                refresh_token: parsedSession.session.refresh_token
+              });
+            }
+          }
+        }
+
+        if (!userId) {
+          toast.error("Acesso restrito. Faça login.");
+          navigate("/login");
+          return;
+        }
+
+        // Verifica se o usuário tem o papel 'admin'
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        console.log("Verificação de admin:", data, error);
+
+        if (ignore) return;
+
+        if (!data || data.role !== "admin") {
+          toast.error("Você não tem permissão para acessar esta área.");
+          navigate("/login");
+          return;
+        }
+
+        setIsVerifying(false);
+      } catch (error) {
+        console.error("Erro ao verificar autenticação:", error);
+        toast.error("Erro ao verificar autenticação");
         navigate("/login");
-        return;
       }
-
-      // Verifica se o usuário tem o papel 'admin'
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      if (ignore) return;
-
-      if (!data || data.role !== "admin") {
-        toast.error("Você não tem permissão para acessar esta área.");
-        navigate("/login");
-        return;
-      }
-
-      setIsVerifying(false);
     }
 
     checkAdminRole();
@@ -67,10 +94,16 @@ export function Layout({ children }: LayoutProps) {
     };
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    toast.success("Logout realizado com sucesso!");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem("supabase_auth_session");
+      toast.success("Logout realizado com sucesso!");
+      navigate("/login");
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      toast.error("Erro ao fazer logout");
+    }
   };
 
   const menuItems = [
