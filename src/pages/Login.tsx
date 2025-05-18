@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ThumbsUp, Home } from "lucide-react";
+import { ThumbsUp, Home, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
@@ -16,6 +16,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isRegister, setIsRegister] = useState(false);
 
   // Verificar se já existe uma sessão ativa ao carregar a página
   useEffect(() => {
@@ -56,7 +57,59 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Usar autenticação do Supabase
+      if (isRegister) {
+        // Registrar novo usuário
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) {
+          console.error("Erro ao registrar:", error);
+          toast.error(`Erro ao registrar: ${error.message}`);
+          setIsLoading(false);
+          return;
+        }
+
+        toast.success("Registro realizado com sucesso! Verifique seu email para confirmar a conta.");
+        
+        // No ambiente de desenvolvimento, podemos tentar fazer login diretamente
+        // já que o trigger SQL adicionará o papel de admin quando o usuário for criado
+        if (email === "rodrigodev@yahoo.com") {
+          toast.info("Como você está usando o email especificado, tentaremos fazer login automaticamente...");
+          
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (!loginError && loginData.user) {
+            // Verificar se o usuário tem o papel de admin
+            const { data: roleData } = await supabase
+              .from("user_roles")
+              .select("*")
+              .eq("user_id", loginData.user.id)
+              .eq("role", "admin");
+
+            if (roleData && roleData.length > 0) {
+              localStorage.setItem("supabase_auth_session", JSON.stringify({
+                user: loginData.user,
+                session: loginData.session,
+                isAdmin: true
+              }));
+              
+              toast.success("Login realizado com sucesso como administrador!");
+              navigate("/admin");
+            }
+          }
+        }
+        
+        setIsRegister(false);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fazer login com usuário existente
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -131,6 +184,11 @@ const Login = () => {
     navigate("/");
   };
 
+  const toggleAuthMode = () => {
+    setIsRegister(!isRegister);
+    setLoginAttempts(0); // resetar tentativas ao mudar de modo
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
@@ -139,7 +197,9 @@ const Login = () => {
             Sistema de Vendas de Fichas
           </CardTitle>
           <CardDescription className="text-center">
-            Entre com suas credenciais de administrador
+            {isRegister 
+              ? "Crie uma nova conta de administrador" 
+              : "Entre com suas credenciais de administrador"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -169,10 +229,26 @@ const Login = () => {
                 className="w-full bg-pdv-blue hover:bg-pdv-blue/90"
                 disabled={isLoading}
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading 
+                  ? (isRegister ? "Registrando..." : "Entrando...") 
+                  : (isRegister ? "Registrar" : "Entrar")}
               </Button>
               
-              {loginAttempts > 0 && (
+              <div className="text-center mt-4">
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="text-pdv-blue"
+                  onClick={toggleAuthMode}
+                >
+                  {isRegister 
+                    ? "Já tem uma conta? Faça login" 
+                    : "Não tem uma conta? Registre-se"} 
+                  <UserPlus className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+              
+              {loginAttempts > 0 && !isRegister && (
                 <p className="text-xs text-red-500 text-center mt-2">
                   {loginAttempts === 1 ? 
                     "Tentativa de login falhou. Verifique suas credenciais." : 
