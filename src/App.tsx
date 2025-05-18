@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import Index from "./pages/Index";
 import Checkout from "./pages/Checkout";
@@ -23,7 +23,16 @@ import SettingsSicredi from "./pages/admin/settings/SettingsSicredi";
 import SettingsBancoBrasil from "./pages/admin/settings/SettingsBancoBrasil";
 import SettingsFiscal from "./pages/admin/settings/SettingsFiscal";
 
-const queryClient = new QueryClient();
+// Configurar o React Query com valores padrões melhores para evitar refetches excessivos
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      retry: 1,
+    }
+  }
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

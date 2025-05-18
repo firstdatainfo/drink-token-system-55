@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -29,8 +28,8 @@ export function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Verificação de acesso admin usando useQuery para evitar loops infinitos
-  const { isLoading, error } = useQuery({
+  // Verificação de acesso admin usando staleTime maior e configurações otimizadas
+  const { isLoading } = useQuery({
     queryKey: ['adminAccess'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -68,7 +67,9 @@ export function Layout({ children }: LayoutProps) {
       return true;
     },
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutos para evitar verificações frequentes
+    staleTime: 60 * 60 * 1000, // 1 hora para evitar verificações frequentes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const handleLogout = async () => {
@@ -140,11 +141,6 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </div>
     );
-  }
-
-  // Se ocorreu erro na verificação de permissão, mostre mensagem de erro
-  if (error) {
-    console.error("Erro na verificação de autenticação:", error);
   }
 
   // Mostrar conteúdo principal

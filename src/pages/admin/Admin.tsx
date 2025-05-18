@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 const Admin = () => {
   const navigate = useNavigate();
   
-  // Buscar dados de vendas da semana do Supabase
+  // Buscar dados de vendas da semana do Supabase com configuração otimizada
   const { data: salesData = [], isLoading: isLoadingSales } = useQuery({
     queryKey: ['admin-sales-data'],
     queryFn: async () => {
@@ -42,10 +42,11 @@ const Admin = () => {
       
       return salesByDay;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 15 * 60 * 1000, // 15 minutos
+    refetchOnWindowFocus: false,
   });
   
-  // Buscar estatísticas gerais
+  // Buscar estatísticas gerais com configuração otimizada
   const { data: stats = { totalSales: 0, ordersToday: 0, topProduct: "Carregando..." }, isLoading: isLoadingStats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
@@ -107,7 +108,8 @@ const Admin = () => {
         topProduct
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 15 * 60 * 1000, // 15 minutos
+    refetchOnWindowFocus: false,
   });
 
   return (
