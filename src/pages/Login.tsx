@@ -71,37 +71,41 @@ const Login = () => {
           return;
         }
 
-        toast.success("Registro realizado com sucesso! Verifique seu email para confirmar a conta.");
-        
-        // No ambiente de desenvolvimento, podemos tentar fazer login diretamente
-        // já que o trigger SQL adicionará o papel de admin quando o usuário for criado
+        // Se o email for rodrigodev@yahoo.com, informar que será um administrador
         if (email === "rodrigodev@yahoo.com") {
-          toast.info("Como você está usando o email especificado, tentaremos fazer login automaticamente...");
+          toast.success("Registro realizado com sucesso! Este usuário terá permissões de administrador.");
           
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
+          // Aguardar um momento para a trigger completar e tentar login automático
+          setTimeout(async () => {
+            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+              email,
+              password
+            });
 
-          if (!loginError && loginData.user) {
-            // Verificar se o usuário tem o papel de admin
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("*")
-              .eq("user_id", loginData.user.id)
-              .eq("role", "admin");
+            if (!loginError && loginData.user) {
+              // Verificar se o usuário tem o papel de admin
+              const { data: roleData } = await supabase
+                .from("user_roles")
+                .select("*")
+                .eq("user_id", loginData.user.id)
+                .eq("role", "admin");
 
-            if (roleData && roleData.length > 0) {
-              localStorage.setItem("supabase_auth_session", JSON.stringify({
-                user: loginData.user,
-                session: loginData.session,
-                isAdmin: true
-              }));
-              
-              toast.success("Login realizado com sucesso como administrador!");
-              navigate("/admin");
+              if (roleData && roleData.length > 0) {
+                localStorage.setItem("supabase_auth_session", JSON.stringify({
+                  user: loginData.user,
+                  session: loginData.session,
+                  isAdmin: true
+                }));
+                
+                toast.success("Login realizado com sucesso como administrador!");
+                navigate("/admin");
+              } else {
+                toast.info("O papel de admin será atribuído em breve. Tente fazer login novamente em alguns instantes.");
+              }
             }
-          }
+          }, 1500);
+        } else {
+          toast.success("Registro realizado com sucesso! Verifique seu email para confirmar a conta.");
         }
         
         setIsRegister(false);
