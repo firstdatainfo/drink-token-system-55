@@ -197,11 +197,9 @@ const Products = () => {
   };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Permite entrada de números decimais
     const value = e.target.value;
-    // Só aceita números e vírgula/ponto (para decimal)
-    if (value === '' || /^[0-9]*[.,]?[0-9]*$/.test(value)) {
-      // Converte para número com . como separador decimal
+    
+    if (value === '' || /^\d*[.,]?\d*$/.test(value)) {
       const numericValue = parseFloat(value.replace(',', '.')) || 0;
       setFormData({...formData, price: numericValue});
     }
