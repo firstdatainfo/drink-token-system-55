@@ -68,7 +68,6 @@ const Login = () => {
         } else {
           // Mostrar uma mensagem mais específica sobre a falta de permissões
           toast.error("Você não possui permissões de administrador");
-          console.log("Usuário sem permissões de administrador:", data.user.email);
           await supabase.auth.signOut();
           localStorage.removeItem("supabase_auth_session");
         }

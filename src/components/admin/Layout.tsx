@@ -1,3 +1,4 @@
+
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function Layout({ children }: LayoutProps) {
         // Primeiro tenta obter a sessão do Supabase
         const { data: { session } } = await supabase.auth.getSession();
         let userId = session?.user?.id;
+        let isSessionValid = !!session;
 
         // Se não encontrou sessão no Supabase, verifica o localStorage
         if (!userId) {
@@ -47,34 +49,53 @@ export function Layout({ children }: LayoutProps) {
             // Se temos dados de sessão no localStorage mas não no Supabase,
             // tentamos estabelecer a sessão novamente
             if (userId && parsedSession.session) {
-              await supabase.auth.setSession({
-                access_token: parsedSession.session.access_token,
-                refresh_token: parsedSession.session.refresh_token
-              });
+              try {
+                const { data, error } = await supabase.auth.setSession({
+                  access_token: parsedSession.session.access_token,
+                  refresh_token: parsedSession.session.refresh_token
+                });
+                
+                isSessionValid = !!data.session && !error;
+                
+                if (error) {
+                  console.error("Erro ao restaurar sessão:", error);
+                  localStorage.removeItem("supabase_auth_session");
+                }
+              } catch (setSessionError) {
+                console.error("Erro ao restaurar sessão:", setSessionError);
+                localStorage.removeItem("supabase_auth_session");
+              }
             }
           }
         }
 
-        if (!userId) {
-          toast.error("Acesso restrito. Faça login.");
+        if (!userId || !isSessionValid) {
+          toast.error("Sessão expirada. Por favor, faça login novamente.");
+          localStorage.removeItem("supabase_auth_session");
           navigate("/login");
           return;
         }
 
         // Verifica se o usuário tem o papel 'admin'
-        const { data, error } = await supabase
+        const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", userId)
-          .eq("role", "admin")
-          .maybeSingle();
-
-        console.log("Verificação de admin:", data, error);
+          .eq("role", "admin");
 
         if (ignore) return;
 
-        if (!data || data.role !== "admin") {
+        if (roleError) {
+          console.error("Erro ao verificar papel do usuário:", roleError);
+          toast.error("Erro ao verificar permissões");
+          navigate("/login");
+          return;
+        }
+
+        if (!roleData || roleData.length === 0) {
           toast.error("Você não tem permissão para acessar esta área.");
+          await supabase.auth.signOut();
+          localStorage.removeItem("supabase_auth_session");
           navigate("/login");
           return;
         }
@@ -142,7 +163,7 @@ export function Layout({ children }: LayoutProps) {
     // Exibir um loading enquanto verifica
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center text-lg text-pdv-blue animate-pulse">Carregando verificação...</div>
+        <div className="text-center text-lg text-pdv-blue animate-pulse">Verificando permissões...</div>
       </div>
     );
   }
@@ -169,7 +190,7 @@ export function Layout({ children }: LayoutProps) {
         className={`fixed lg:static z-40 h-full w-64 bg-white border-r shadow-sm transform transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         <div className="p-6">
-          <h1 className="text-xl font-bold text-pdv-blue">Admin Panel</h1>
+          <h1 className="text-xl font-bold text-pdv-blue">Painel de Admin</h1>
         </div>
 
         <nav className="px-4 mt-6 space-y-1">
