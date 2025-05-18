@@ -147,22 +147,22 @@ const Admin = () => {
 
   return (
     <Layout>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Total de Vendas</CardTitle>
-            <CardDescription>Vendas da semana atual</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-medium">Total de Vendas</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Vendas da semana atual</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingStats ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Carregando...</span>
+                <span className="text-sm">Carregando...</span>
               </div>
             ) : (
-              <p className="text-3xl font-bold text-pdv-blue">
+              <p className="text-xl sm:text-3xl font-bold text-pdv-blue">
                 R$ {stats.totalSales.toFixed(2)}
               </p>
             )}
@@ -171,45 +171,45 @@ const Admin = () => {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Pedidos</CardTitle>
-            <CardDescription>Total de pedidos hoje</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-medium">Pedidos</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Total de pedidos hoje</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingStats ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Carregando...</span>
+                <span className="text-sm">Carregando...</span>
               </div>
             ) : (
-              <p className="text-3xl font-bold text-pdv-green">{stats.ordersToday}</p>
+              <p className="text-xl sm:text-3xl font-bold text-pdv-green">{stats.ordersToday}</p>
             )}
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Produto mais vendido</CardTitle>
-            <CardDescription>Nesta semana</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-medium">Produto mais vendido</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Nesta semana</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingStats ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Carregando...</span>
+                <span className="text-sm">Carregando...</span>
               </div>
             ) : (
-              <p className="text-3xl font-bold text-pdv-orange">{stats.topProduct}</p>
+              <p className="text-sm sm:text-xl font-bold text-pdv-orange truncate">{stats.topProduct}</p>
             )}
           </CardContent>
         </Card>
       </div>
       
-      <Card className="mb-6">
+      <Card className="mb-4 sm:mb-6">
         <CardHeader>
-          <CardTitle>Vendas por dia da semana</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Vendas por dia da semana</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             {isLoadingSales ? (
               <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-pdv-blue" />
@@ -218,11 +218,11 @@ const Admin = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={salesData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Bar dataKey="vendas" fill="#0EA5E9" />
                 </BarChart>
@@ -233,31 +233,31 @@ const Admin = () => {
       </Card>
       
       {/* Configurações e Integrações */}
-      <Card className="mb-6">
+      <Card className="mb-4 sm:mb-6">
         <CardHeader>
-          <CardTitle>Configurações e Integrações</CardTitle>
-          <CardDescription>Configure impressoras e integrações</CardDescription>
+          <CardTitle className="text-base sm:text-lg">Configurações e Integrações</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Configure impressoras e integrações</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Configurações de Impressora */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium flex items-center">
-                  <Printer className="h-5 w-5 mr-2" />
+                <CardTitle className="text-base font-medium flex items-center">
+                  <Printer className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Configurações de Impressão
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="mb-2 text-sm text-gray-500">Modelos de Impressora:</p>
+                <p className="mb-2 text-xs sm:text-sm text-gray-500">Modelos de Impressora:</p>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Button variant="outline" size="sm">48mm</Button>
-                  <Button variant="outline" size="sm">58mm</Button>
-                  <Button variant="outline" size="sm">80mm</Button>
+                  <Button variant="outline" size="sm" className="text-xs">48mm</Button>
+                  <Button variant="outline" size="sm" className="text-xs">58mm</Button>
+                  <Button variant="outline" size="sm" className="text-xs">80mm</Button>
                 </div>
                 <Button 
                   variant="secondary" 
-                  className="w-full"
+                  className="w-full text-xs sm:text-sm"
                   onClick={() => navigate("/admin/printer-settings")}
                 >
                   Configurar Impressora
@@ -268,32 +268,32 @@ const Admin = () => {
             {/* Integrações */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium">Integrações</CardTitle>
+                <CardTitle className="text-base font-medium">Integrações</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <CreditCard className="h-5 w-5 mr-2 text-pdv-blue" />
-                      <span>Stone Pagamentos</span>
+                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-pdv-blue" />
+                      <span className="text-xs sm:text-sm">Stone Pagamentos</span>
                     </div>
-                    <Button variant="outline" size="sm">Conectar</Button>
+                    <Button variant="outline" size="sm" className="text-xs">Conectar</Button>
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <Database className="h-5 w-5 mr-2 text-pdv-green" />
-                      <span>Supabase</span>
+                      <Database className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-pdv-green" />
+                      <span className="text-xs sm:text-sm">Supabase</span>
                     </div>
-                    <Button variant="outline" size="sm">Conectar</Button>
+                    <Button variant="outline" size="sm" className="text-xs">Conectar</Button>
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <Rocket className="h-5 w-5 mr-2 text-black" />
-                      <span>Vercel</span>
+                      <Rocket className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-black" />
+                      <span className="text-xs sm:text-sm">Vercel</span>
                     </div>
-                    <Button variant="outline" size="sm">Conectar</Button>
+                    <Button variant="outline" size="sm" className="text-xs">Conectar</Button>
                   </div>
                 </div>
               </CardContent>
@@ -302,25 +302,45 @@ const Admin = () => {
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="col-span-1 md:col-span-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+        <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Acesso rápido</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Acesso rápido</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-4">
-            <Button onClick={() => navigate("/admin/products")}>
+          <CardContent className="flex flex-wrap gap-2 sm:gap-4">
+            <Button 
+              onClick={() => navigate("/admin/products")}
+              className="text-xs sm:text-sm"
+              size="sm"
+            >
               Gerenciar Produtos
             </Button>
-            <Button onClick={() => navigate("/admin/categories")}>
+            <Button 
+              onClick={() => navigate("/admin/categories")}
+              className="text-xs sm:text-sm"
+              size="sm"
+            >
               Gerenciar Categorias
             </Button>
-            <Button onClick={() => navigate("/admin/reports")}>
-              Relatórios de Vendas
+            <Button 
+              onClick={() => navigate("/admin/reports")}
+              className="text-xs sm:text-sm"
+              size="sm"
+            >
+              Relatórios
             </Button>
-            <Button onClick={() => navigate("/admin/printer-settings")}>
-              Configurações de Impressão
+            <Button 
+              onClick={() => navigate("/admin/printer-settings")}
+              className="text-xs sm:text-sm"
+              size="sm"
+            >
+              Configurar Impressão
             </Button>
-            <Button onClick={() => navigate("/")}>
+            <Button 
+              onClick={() => navigate("/")}
+              className="text-xs sm:text-sm"
+              size="sm"
+            >
               Ir para PDV
             </Button>
           </CardContent>
