@@ -23,104 +23,80 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [permissionsVerified, setPermissionsVerified] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Verificação de acesso admin otimizada para evitar loops infinitos
+  // Verificação de acesso admin simplificada para evitar loops infinitos
   useEffect(() => {
-    // Executar a verificação apenas uma vez
-    if (permissionsVerified) return;
+    // Use uma flag local para evitar atualizações de estado após desmontagem
+    let isMounted = true;
     
     const checkAdminAccess = async () => {
       try {
-        console.log("Iniciando verificação de admin...");
-        
         // Tentar obter sessão do Supabase
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
           console.log("Nenhuma sessão ativa encontrada, redirecionando para login");
-          toast.error("Por favor, faça login para acessar a área administrativa");
-          navigate("/login");
+          if (isMounted) {
+            toast.error("Por favor, faça login para acessar a área administrativa");
+            navigate("/login");
+          }
           return;
         }
         
         const userId = session.user.id;
         const userEmail = session.user.email;
         
-        console.log(`Verificando acesso de admin para usuário: ${userEmail} (${userId})`);
-        
         // Caso especial para rodrigodev@yahoo.com
         if (userEmail === "rodrigodev@yahoo.com") {
-          console.log("Usuário admin especial detectado");
-          
-          // Verificar se o papel de admin existe para este usuário
-          const { data: roleData, error: roleError } = await supabase
-            .from("user_roles")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("role", "admin")
-            .maybeSingle();
-            
-          if (roleError) {
-            console.error("Erro ao verificar papel de admin:", roleError);
+          // Usuário especial, permitir acesso imediatamente
+          if (isMounted) {
+            setIsLoading(false);
           }
-          
-          // Se o papel de admin não existir para este usuário especial, tentar adicioná-lo
-          if (!roleData) {
-            console.log("Tentando adicionar papel de admin para usuário especial");
-            
-            try {
-              // Primeiro tentar através do RLS
-              const { error: insertError } = await supabase
-                .from("user_roles")
-                .insert({ user_id: userId, role: "admin" });
-                
-              if (insertError) {
-                console.log("Não foi possível inserir papel de admin via RLS:", insertError.message);
-              }
-            } catch (err) {
-              console.error("Erro ao conceder papel de admin:", err);
-            }
-          }
-          
-          // Marcar como verificado e permitir acesso
-          setPermissionsVerified(true);
           return;
         }
         
-        // Verificação de admin padrão para todos os outros usuários
+        // Verificação de admin para outros usuários
         const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("*")
           .eq("user_id", userId)
           .eq("role", "admin");
           
-        if (roleError) {
-          console.error("Erro ao verificar papel de admin:", roleError);
+        if (roleError && isMounted) {
           toast.error("Erro ao verificar permissões");
           navigate("/login");
           return;
         }
         
         if (!roleData || roleData.length === 0) {
-          console.log("Usuário não tem permissões de admin:", userEmail);
-          toast.error("Você não tem permissão para acessar esta área");
-          await supabase.auth.signOut();
-          navigate("/login");
+          if (isMounted) {
+            toast.error("Você não tem permissão para acessar esta área");
+            navigate("/login");
+          }
           return;
         }
         
-        console.log("Verificação de admin concluída com sucesso");
-        setPermissionsVerified(true);
+        // Verificação concluída com sucesso
+        if (isMounted) {
+          setIsLoading(false);
+        }
       } catch (error) {
-        console.error("Erro na verificação de autenticação:", error);
-        toast.error("Erro ao verificar autenticação");
-        navigate("/login");
+        if (isMounted) {
+          console.error("Erro na verificação de autenticação:", error);
+          toast.error("Erro ao verificar autenticação");
+          navigate("/login");
+        }
       }
-    }
+    };
     
     checkAdminAccess();
-  }, [navigate, permissionsVerified]);
+    
+    // Cleanup function para evitar memory leaks e atualizações após desmontagem
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
@@ -166,6 +142,7 @@ export function Layout({ children }: LayoutProps) {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Mostrar conteúdo apenas quando verificação estiver completa
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Menu Button */}
