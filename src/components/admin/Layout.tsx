@@ -26,7 +26,7 @@ export function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
 
-  // Nova proteção para acesso de admin com verificação de sessão local
+  // Proteção aprimorada para acesso de admin com verificação de sessão local
   useEffect(() => {
     let ignore = false;
 
@@ -34,6 +34,8 @@ export function Layout({ children }: LayoutProps) {
       setIsVerifying(true);
       
       try {
+        console.log("Iniciando verificação de admin...");
+        
         // Primeiro tenta obter a sessão do Supabase
         const { data: { session } } = await supabase.auth.getSession();
         let userId = session?.user?.id;
@@ -41,6 +43,7 @@ export function Layout({ children }: LayoutProps) {
 
         // Se não encontrou sessão no Supabase, verifica o localStorage
         if (!userId) {
+          console.log("Sessão não encontrada no Supabase, verificando localStorage...");
           const storedSession = localStorage.getItem("supabase_auth_session");
           if (storedSession) {
             try {
@@ -51,6 +54,7 @@ export function Layout({ children }: LayoutProps) {
               // tentamos estabelecer a sessão novamente
               if (userId && parsedSession.session) {
                 try {
+                  console.log("Tentando restaurar sessão do localStorage...");
                   const { data, error } = await supabase.auth.setSession({
                     access_token: parsedSession.session.access_token,
                     refresh_token: parsedSession.session.refresh_token
@@ -62,6 +66,9 @@ export function Layout({ children }: LayoutProps) {
                     console.error("Erro ao restaurar sessão:", error);
                     localStorage.removeItem("supabase_auth_session");
                     isSessionValid = false;
+                  } else {
+                    console.log("Sessão restaurada com sucesso!");
+                    userId = data.session?.user.id;
                   }
                 } catch (setSessionError) {
                   console.error("Erro ao restaurar sessão:", setSessionError);
@@ -78,13 +85,17 @@ export function Layout({ children }: LayoutProps) {
         }
 
         if (!userId || !isSessionValid) {
+          console.log("Sessão inválida, redirecionando para login");
           toast.error("Sessão expirada ou inválida. Por favor, faça login novamente.");
           localStorage.removeItem("supabase_auth_session");
           navigate("/login");
           return;
         }
 
-        // Verifica se o usuário tem o papel 'admin'
+        console.log("Verificando papel do usuário para:", userId);
+        
+        // Verificação aprimorada para o papel 'admin'
+        // Primeiro, tentamos com a tabela user_roles
         const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
@@ -100,7 +111,42 @@ export function Layout({ children }: LayoutProps) {
           return;
         }
 
+        // Se for rodrigodev@yahoo.com, faça uma verificação especial e force o papel admin
+        const { data: userData } = await supabase
+          .from("users")
+          .select("email")
+          .eq("id", userId)
+          .single();
+
+        const isSpecialAdmin = userData?.email === "rodrigodev@yahoo.com";
+        
+        if (isSpecialAdmin) {
+          console.log("Usuário especial detectado:", userData.email);
+          
+          // Verificar se já tem o papel admin
+          if (!roleData || roleData.length === 0) {
+            // Tentar inserir o papel admin para este usuário
+            console.log("Tentando adicionar papel admin para usuário especial");
+            const { error: insertError } = await supabase
+              .from("user_roles")
+              .insert({ user_id: userId, role: "admin" })
+              .select();
+              
+            if (insertError) {
+              console.error("Erro ao adicionar papel admin:", insertError);
+            } else {
+              console.log("Papel admin adicionado com sucesso!");
+            }
+          }
+          
+          // Permitir acesso mesmo se a inserção falhar
+          setIsVerifying(false);
+          return;
+        }
+
+        // Verificação padrão para outros usuários
         if (!roleData || roleData.length === 0) {
+          console.log("Usuário não tem permissões de administrador:", userData?.email);
           toast.error("Você não tem permissão para acessar esta área.");
           await supabase.auth.signOut();
           localStorage.removeItem("supabase_auth_session");
