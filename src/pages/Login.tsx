@@ -19,89 +19,57 @@ const Login = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [debugMessage, setDebugMessage] = useState("");
 
-  // Função de depuração
+  // Debug helper
   const addDebug = (message) => {
     console.log(message);
     setDebugMessage(prev => prev + "\n" + message);
   };
 
-  // Verificar se já existe uma sessão ativa ao carregar a página
+  // Check for existing session on component mount
   useEffect(() => {
-    const checkExistingSession = async () => {
+    const checkSession = async () => {
       try {
-        if (debugMode) addDebug("Verificando sessão existente...");
+        if (debugMode) addDebug("Checking for existing session...");
         
-        // Tentar recuperar sessão do localStorage primeiro
-        const storedSession = localStorage.getItem("supabase_auth_session");
-        if (storedSession) {
-          try {
-            const parsed = JSON.parse(storedSession);
-            if (parsed?.isAdmin && parsed?.user) {
-              if (debugMode) addDebug(`Sessão encontrada no localStorage: ${parsed.user.email}`);
-              navigate("/admin");
-              return;
-            }
-          } catch (e) {
-            if (debugMode) addDebug(`Erro ao analisar sessão local: ${e.message}`);
-            localStorage.removeItem("supabase_auth_session");
-          }
-        }
-
-        // Se não encontrou no localStorage, verificar com Supabase
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session && session.user) {
-          if (debugMode) addDebug(`Sessão encontrada no Supabase: ${session.user.email}`);
+        if (session?.user?.email) {
+          if (debugMode) addDebug(`Found session for ${session.user.email}`);
           
-          // Verificação especial para rodrigodev@yahoo.com
+          // For the special admin user
           if (session.user.email === "rodrigodev@yahoo.com") {
-            if (debugMode) addDebug("Email especial detectado, redirecionando para admin...");
-            
-            localStorage.setItem("supabase_auth_session", JSON.stringify({
-              user: session.user,
-              session: session,
-              isAdmin: true
-            }));
-            
+            if (debugMode) addDebug("Special admin user detected, redirecting to admin");
             navigate("/admin");
             return;
           }
           
-          // Verificar papel de admin em user_roles
-          const { data: userRoles, error: roleError } = await supabase
+          // Check if user has admin role
+          const { data: userRoles } = await supabase
             .from("user_roles")
             .select("*")
             .eq("user_id", session.user.id)
             .eq("role", "admin");
-
-          if (roleError) {
-            if (debugMode) addDebug(`Erro ao verificar papéis: ${roleError.message}`);
-          } else if (userRoles && userRoles.length > 0) {
-            if (debugMode) addDebug("Usuário tem papel de admin, redirecionando...");
             
-            localStorage.setItem("supabase_auth_session", JSON.stringify({
-              user: session.user,
-              session: session,
-              isAdmin: true
-            }));
-            
+          if (userRoles && userRoles.length > 0) {
+            if (debugMode) addDebug("User has admin role, redirecting to admin");
             navigate("/admin");
           } else {
-            if (debugMode) addDebug("Usuário não tem papel de admin");
+            if (debugMode) addDebug("User has no admin permissions");
+            toast.error("Você não possui permissões de administrador");
           }
         } else {
-          if (debugMode) addDebug("Nenhuma sessão encontrada");
+          if (debugMode) addDebug("No active session found");
         }
       } catch (error) {
-        console.error("Erro ao verificar sessão:", error);
-        if (debugMode) addDebug(`Erro ao verificar sessão: ${error.message}`);
+        console.error("Session check error:", error);
+        if (debugMode) addDebug(`Session check error: ${error.message}`);
       }
     };
-
-    checkExistingSession();
+    
+    checkSession();
   }, [navigate, debugMode]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -114,16 +82,17 @@ const Login = () => {
     
     try {
       if (isRegister) {
-        // Registrar novo usuário
-        if (debugMode) addDebug(`Tentando registrar usuário: ${email}`);
+        // Handle registration
+        if (debugMode) addDebug(`Attempting to register: ${email}`);
+        
         const { data, error } = await supabase.auth.signUp({
           email,
           password
         });
-
+        
         if (error) {
-          console.error("Erro ao registrar:", error);
-          if (debugMode) addDebug(`Erro ao registrar: ${error.message}`);
+          console.error("Registration error:", error);
+          if (debugMode) addDebug(`Registration error: ${error.message}`);
           
           if (error.message.includes("already registered")) {
             toast.error("Este email já está registrado. Tente fazer login.");
@@ -135,15 +104,15 @@ const Login = () => {
           setIsLoading(false);
           return;
         }
-
-        // Se o email for rodrigodev@yahoo.com, informar que será um administrador
+        
+        // Special case for rodrigodev@yahoo.com
         if (email === "rodrigodev@yahoo.com") {
-          if (debugMode) addDebug("Email especial detectado: rodrigodev@yahoo.com");
+          if (debugMode) addDebug("Special admin user registered");
           toast.success("Registro realizado com sucesso! Este usuário terá permissões de administrador.");
           
-          // Aguardar um momento e tentar login automático
-          setTimeout(async () => {
-            await loginAndSetAdmin(email, password);
+          // Attempt auto-login after registration
+          setTimeout(() => {
+            handleSpecialAdminLogin(email, password);
           }, 1500);
         } else {
           toast.success("Registro realizado com sucesso! Verifique seu email para confirmar a conta.");
@@ -154,28 +123,30 @@ const Login = () => {
         return;
       }
       
-      // Fazer login com usuário existente
-      await loginAndSetAdmin(email, password);
+      // Handle login
+      await handleSpecialAdminLogin(email, password);
       
-    } catch (error: any) {
-      console.error("Erro de login:", error);
-      if (debugMode) addDebug(`Erro de login geral: ${error?.message || "Desconhecido"}`);
+    } catch (error) {
+      console.error("Login error:", error);
+      if (debugMode) addDebug(`General error: ${error?.message || "Unknown error"}`);
       toast.error(error?.message || "Erro ao fazer login");
       setIsLoading(false);
     }
   };
   
-  const loginAndSetAdmin = async (email: string, password: string) => {
+  // Specialized login handler with enhanced admin handling
+  const handleSpecialAdminLogin = async (loginEmail, loginPassword) => {
     try {
-      if (debugMode) addDebug(`Tentando fazer login: ${email}`);
+      if (debugMode) addDebug(`Attempting login: ${loginEmail}`);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email: loginEmail,
+        password: loginPassword
       });
-
+      
       if (error) {
-        console.error("Erro de login:", error);
-        if (debugMode) addDebug(`Erro de login: ${error.message}`);
+        console.error("Login error:", error);
+        if (debugMode) addDebug(`Login error: ${error.message}`);
         
         if (error.message.includes("Invalid login credentials")) {
           toast.error("Credenciais inválidas. Por favor, verifique seu email e senha.", {
@@ -188,70 +159,57 @@ const Login = () => {
         setIsLoading(false);
         return;
       }
-
-      if (data.user) {
-        if (debugMode) addDebug(`Login bem-sucedido: ${data.user.email}`);
+      
+      const userId = data.user.id;
+      const userEmail = data.user.email;
+      
+      if (debugMode) addDebug(`Login successful for ${userEmail}`);
+      
+      // Special handling for the admin user
+      if (userEmail === "rodrigodev@yahoo.com") {
+        if (debugMode) addDebug("Special admin user detected");
         
-        // Verificação especial para rodrigodev@yahoo.com
-        if (data.user.email === "rodrigodev@yahoo.com") {
-          if (debugMode) addDebug("Email especial detectado como admin");
-          
-          // Verificar se o papel admin já existe
-          const { data: roles } = await supabase
-            .from("user_roles")
-            .select("*")
-            .eq("user_id", data.user.id)
-            .eq("role", "admin");
-            
-          if (!roles || roles.length === 0) {
-            if (debugMode) addDebug("Tentando inserir papel admin...");
-            // Inserir papel admin
-            await supabase
-              .from("user_roles")
-              .insert({ user_id: data.user.id, role: "admin" });
-          }
-          
-          // Armazenar a sessão do usuário localmente
-          localStorage.setItem("supabase_auth_session", JSON.stringify({
-            user: data.user,
-            session: data.session,
-            isAdmin: true
-          }));
-          
-          toast.success("Login realizado com sucesso como administrador!");
-          navigate("/admin");
-          return;
-        }
+        // Create session info in localStorage for backup
+        localStorage.setItem("supabase_auth_session", JSON.stringify({
+          user: data.user,
+          session: data.session,
+          isAdmin: true
+        }));
         
-        // Verificar papel admin para outros usuários
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("*")
-          .eq("user_id", data.user.id)
-          .eq("role", "admin");
-
-        if (roleData && roleData.length > 0) {
-          if (debugMode) addDebug("Papel admin encontrado");
-          localStorage.setItem("supabase_auth_session", JSON.stringify({
-            user: data.user,
-            session: data.session,
-            isAdmin: true
-          }));
-          
-          toast.success("Login realizado com sucesso!");
-          navigate("/admin");
-        } else {
-          if (debugMode) addDebug("Usuário não tem permissões de admin");
-          toast.error("Você não possui permissões de administrador");
-          await supabase.auth.signOut();
-          localStorage.removeItem("supabase_auth_session");
-        }
+        toast.success("Login realizado com sucesso!");
+        navigate("/admin");
+        return;
+      }
+      
+      // Standard admin role check for other users
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("role", "admin");
+      
+      if (roleData && roleData.length > 0) {
+        if (debugMode) addDebug("User has admin role");
+        
+        localStorage.setItem("supabase_auth_session", JSON.stringify({
+          user: data.user,
+          session: data.session,
+          isAdmin: true
+        }));
+        
+        toast.success("Login realizado com sucesso!");
+        navigate("/admin");
+      } else {
+        if (debugMode) addDebug("User has no admin permissions");
+        await supabase.auth.signOut();
+        localStorage.removeItem("supabase_auth_session");
+        toast.error("Você não possui permissões de administrador");
       }
       
       setIsLoading(false);
-    } catch (error: any) {
-      console.error("Erro ao processar login:", error);
-      if (debugMode) addDebug(`Erro ao processar login: ${error?.message}`);
+    } catch (error) {
+      console.error("Login processing error:", error);
+      if (debugMode) addDebug(`Login processing error: ${error?.message}`);
       toast.error(error?.message || "Erro ao processar login");
       setIsLoading(false);
     }
@@ -339,7 +297,7 @@ const Login = () => {
                 </Button>
               </div>
               
-              {debugMode && debugMessage && (
+              {debugMode && (
                 <div className="mt-4 p-2 bg-gray-100 rounded text-xs font-mono text-gray-800 max-h-40 overflow-y-auto">
                   <p className="font-semibold">Depuração:</p>
                   {debugMessage.split('\n').map((line, i) => (
