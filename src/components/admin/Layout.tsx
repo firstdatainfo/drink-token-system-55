@@ -24,24 +24,21 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(true);
 
-  // Improved admin access verification
+  // Melhorar verificação de acesso admin sem mostrar a tela de carregamento
   useEffect(() => {
     let ignore = false;
     
     async function checkAdminAccess() {
-      setIsVerifying(true);
-      
       try {
-        console.log("Starting admin verification...");
+        console.log("Iniciando verificação de admin...");
         
-        // Try to get session from Supabase
+        // Tentar obter sessão do Supabase
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          console.log("No active session found, redirecting to login");
-          toast.error("Please log in to access the admin area");
+          console.log("Nenhuma sessão ativa encontrada, redirecionando para login");
+          toast.error("Por favor, faça login para acessar a área administrativa");
           navigate("/login");
           return;
         }
@@ -49,13 +46,13 @@ export function Layout({ children }: LayoutProps) {
         const userId = session.user.id;
         const userEmail = session.user.email;
         
-        console.log(`Checking admin access for user: ${userEmail} (${userId})`);
+        console.log(`Verificando acesso de admin para usuário: ${userEmail} (${userId})`);
         
-        // Special case for rodrigodev@yahoo.com
+        // Caso especial para rodrigodev@yahoo.com
         if (userEmail === "rodrigodev@yahoo.com") {
-          console.log("Special admin user detected");
+          console.log("Usuário admin especial detectado");
           
-          // Check if admin role exists for this user
+          // Verificar se o papel de admin existe para este usuário
           const { data: roleData, error: roleError } = await supabase
             .from("user_roles")
             .select("*")
@@ -66,35 +63,33 @@ export function Layout({ children }: LayoutProps) {
           if (ignore) return;
           
           if (roleError) {
-            console.error("Error checking admin role:", roleError);
+            console.error("Erro ao verificar papel de admin:", roleError);
           }
           
-          // If admin role doesn't exist for this special user, try to add it
+          // Se o papel de admin não existir para este usuário especial, tentar adicioná-lo
           if (!roleData) {
-            console.log("Attempting to add admin role for special user");
+            console.log("Tentando adicionar papel de admin para usuário especial");
             
             try {
-              // First try through RLS
+              // Primeiro tentar através do RLS
               const { error: insertError } = await supabase
                 .from("user_roles")
                 .insert({ user_id: userId, role: "admin" });
                 
               if (insertError) {
-                console.log("Could not insert admin role via RLS:", insertError.message);
-                // This is expected if RLS prevents the insert
+                console.log("Não foi possível inserir papel de admin via RLS:", insertError.message);
               }
             } catch (err) {
-              console.error("Error granting admin role:", err);
+              console.error("Erro ao conceder papel de admin:", err);
             }
           }
           
-          // Allow access for special admin user regardless of DB role status
+          // Permitir acesso para usuário admin especial independentemente do status do papel no BD
           if (ignore) return;
-          setIsVerifying(false);
           return;
         }
         
-        // Standard admin verification for all other users
+        // Verificação de admin padrão para todos os outros usuários
         const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("*")
@@ -104,25 +99,24 @@ export function Layout({ children }: LayoutProps) {
         if (ignore) return;
         
         if (roleError) {
-          console.error("Error verifying admin role:", roleError);
-          toast.error("Error verifying permissions");
+          console.error("Erro ao verificar papel de admin:", roleError);
+          toast.error("Erro ao verificar permissões");
           navigate("/login");
           return;
         }
         
         if (!roleData || roleData.length === 0) {
-          console.log("User does not have admin permissions:", userEmail);
-          toast.error("You don't have permission to access this area");
+          console.log("Usuário não tem permissões de admin:", userEmail);
+          toast.error("Você não tem permissão para acessar esta área");
           await supabase.auth.signOut();
           navigate("/login");
           return;
         }
         
-        console.log("Admin verification completed successfully");
-        setIsVerifying(false);
+        console.log("Verificação de admin concluída com sucesso");
       } catch (error) {
-        console.error("Authentication verification error:", error);
-        toast.error("Error verifying authentication");
+        console.error("Erro na verificação de autenticação:", error);
+        toast.error("Erro ao verificar autenticação");
         navigate("/login");
       }
     }
@@ -138,11 +132,11 @@ export function Layout({ children }: LayoutProps) {
     try {
       await supabase.auth.signOut();
       localStorage.removeItem("supabase_auth_session");
-      toast.success("Logout successful!");
+      toast.success("Logout realizado com sucesso!");
       navigate("/login");
     } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Error during logout");
+      console.error("Erro ao fazer logout:", error);
+      toast.error("Erro durante logout");
     }
   };
 
@@ -178,13 +172,7 @@ export function Layout({ children }: LayoutProps) {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  if (isVerifying) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center text-lg text-pdv-blue animate-pulse">Verificando permissões...</div>
-      </div>
-    );
-  }
+  // Removida a verificação que causava a tela de carregamento
 
   return (
     <div className="flex min-h-screen bg-gray-50">
