@@ -12,10 +12,12 @@ import {
   Menu,
   X,
   Printer,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,74 +27,49 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Verificação de acesso admin simplificada para evitar loops infinitos
-  useEffect(() => {
-    let isMounted = true;
-    
-    const checkAdminAccess = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          if (isMounted) {
-            toast.error("Por favor, faça login para acessar a área administrativa");
-            navigate("/login");
-          }
-          return;
-        }
-        
-        const userEmail = session.user.email;
-        
-        // Caso especial para rodrigodev@yahoo.com
-        if (userEmail === "rodrigodev@yahoo.com") {
-          if (isMounted) {
-            setIsLoading(false);
-          }
-          return;
-        }
-        
-        // Verificação de admin para outros usuários
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .eq("role", "admin");
-          
-        if (roleError && isMounted) {
-          toast.error("Erro ao verificar permissões");
-          navigate("/login");
-          return;
-        }
-        
-        if (!roleData || roleData.length === 0) {
-          if (isMounted) {
-            toast.error("Você não tem permissão para acessar esta área");
-            navigate("/login");
-          }
-          return;
-        }
-        
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error("Erro na verificação de autenticação:", error);
-          toast.error("Erro ao verificar autenticação");
-          navigate("/login");
-        }
+  // Verificação de acesso admin usando useQuery para evitar loops infinitos
+  const { isLoading, error } = useQuery({
+    queryKey: ['adminAccess'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("Por favor, faça login para acessar a área administrativa");
+        navigate("/login");
+        return false;
       }
-    };
-    
-    checkAdminAccess();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [navigate]);
+      
+      const userEmail = session.user.email;
+      
+      // Caso especial para rodrigodev@yahoo.com
+      if (userEmail === "rodrigodev@yahoo.com") {
+        return true;
+      }
+      
+      // Verificação de admin para outros usuários
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("role", "admin");
+        
+      if (roleError) {
+        throw new Error("Erro ao verificar permissões");
+      }
+      
+      if (!roleData || roleData.length === 0) {
+        toast.error("Você não tem permissão para acessar esta área");
+        navigate("/login");
+        return false;
+      }
+      
+      return true;
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos para evitar verificações frequentes
+  });
 
   const handleLogout = async () => {
     try {
@@ -153,7 +130,24 @@ export function Layout({ children }: LayoutProps) {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Mostrar conteúdo apenas quando verificação estiver completa
+  // Se estiver carregando, mostre um indicador simples
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full border-4 border-gray-300 border-t-pdv-blue h-12 w-12 mb-4"></div>
+          <p>Verificando acesso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se ocorreu erro na verificação de permissão, mostre mensagem de erro
+  if (error) {
+    console.error("Erro na verificação de autenticação:", error);
+  }
+
+  // Mostrar conteúdo principal
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Menu Button */}
@@ -248,10 +242,22 @@ export function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <div className="flex-1 lg:ml-64">
         <header className="bg-white shadow-sm h-16 flex items-center px-6 sticky top-0 z-10">
-          <div className="w-full flex justify-end">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-              Ir para PDV
-            </Button>
+          <div className="w-full flex justify-between items-center">
+            {location.pathname !== "/admin" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="flex items-center"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+              </Button>
+            )}
+            <div className="ml-auto">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+                Ir para PDV
+              </Button>
+            </div>
           </div>
         </header>
 

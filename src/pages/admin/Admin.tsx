@@ -5,19 +5,110 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Printer, CreditCard, Database, Rocket } from "lucide-react";
+import { Printer, CreditCard, Database, Rocket, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [salesData, setSalesData] = useState([
-    { name: "Segunda", vendas: 400 },
-    { name: "Terça", vendas: 300 },
-    { name: "Quarta", vendas: 500 },
-    { name: "Quinta", vendas: 280 },
-    { name: "Sexta", vendas: 590 },
-    { name: "Sábado", vendas: 800 },
-    { name: "Domingo", vendas: 700 },
-  ]);
+  
+  // Buscar dados de vendas da semana do Supabase
+  const { data: salesData = [], isLoading: isLoadingSales } = useQuery({
+    queryKey: ['admin-sales-data'],
+    queryFn: async () => {
+      const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+      
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('total_amount, created_at');
+      
+      if (error) throw error;
+      
+      // Agrupar vendas por dia da semana
+      const salesByDay = daysOfWeek.map(day => ({
+        name: day,
+        vendas: 0
+      }));
+      
+      // Se tiver dados de pedidos, processar
+      if (orders && orders.length > 0) {
+        orders.forEach(order => {
+          const date = new Date(order.created_at);
+          const dayIndex = date.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+          const mappedIndex = dayIndex === 0 ? 6 : dayIndex - 1; // Converter para 0 = Segunda, ..., 6 = Domingo
+          salesByDay[mappedIndex].vendas += Number(order.total_amount);
+        });
+      }
+      
+      return salesByDay;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+  
+  // Buscar estatísticas gerais
+  const { data: stats = { totalSales: 0, ordersToday: 0, topProduct: "Carregando..." }, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: async () => {
+      // Total de vendas da semana
+      const startOfWeek = new Date();
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Segunda-feira
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const { data: weekOrders, error: weekError } = await supabase
+        .from('orders')
+        .select('total_amount')
+        .gte('created_at', startOfWeek.toISOString());
+      
+      // Total de pedidos hoje
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: todayOrders, error: todayError } = await supabase
+        .from('orders')
+        .select('id')
+        .gte('created_at', today.toISOString());
+      
+      // Produto mais vendido
+      const { data: orderItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select('product_name, quantity');
+      
+      if (weekError || todayError || itemsError) throw new Error("Erro ao buscar estatísticas");
+      
+      // Calcular total de vendas da semana
+      const totalSales = weekOrders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+      
+      // Contar pedidos de hoje
+      const ordersToday = todayOrders?.length || 0;
+      
+      // Encontrar produto mais vendido
+      const productCounts: Record<string, number> = {};
+      orderItems?.forEach(item => {
+        const productName = item.product_name;
+        if (!productCounts[productName]) {
+          productCounts[productName] = 0;
+        }
+        productCounts[productName] += item.quantity;
+      });
+      
+      let topProduct = "Nenhum";
+      let maxCount = 0;
+      
+      Object.entries(productCounts).forEach(([product, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          topProduct = product;
+        }
+      });
+      
+      return {
+        totalSales,
+        ordersToday,
+        topProduct
+      };
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
 
   return (
     <Layout>
@@ -30,7 +121,16 @@ const Admin = () => {
             <CardDescription>Vendas da semana atual</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-pdv-blue">R$ 3.570,00</p>
+            {isLoadingStats ? (
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Carregando...</span>
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-pdv-blue">
+                R$ {stats.totalSales.toFixed(2)}
+              </p>
+            )}
           </CardContent>
         </Card>
         
@@ -40,7 +140,14 @@ const Admin = () => {
             <CardDescription>Total de pedidos hoje</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-pdv-green">42</p>
+            {isLoadingStats ? (
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Carregando...</span>
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-pdv-green">{stats.ordersToday}</p>
+            )}
           </CardContent>
         </Card>
         
@@ -50,7 +157,14 @@ const Admin = () => {
             <CardDescription>Nesta semana</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-pdv-orange">Cerveja</p>
+            {isLoadingStats ? (
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Carregando...</span>
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-pdv-orange">{stats.topProduct}</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -61,18 +175,24 @@ const Admin = () => {
         </CardHeader>
         <CardContent>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={salesData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="vendas" fill="#0EA5E9" />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoadingSales ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-pdv-blue" />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={salesData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="vendas" fill="#0EA5E9" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </CardContent>
       </Card>
