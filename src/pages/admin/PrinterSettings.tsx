@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,11 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { Printer, Save, FileDown, QrCode, Barcode } from "lucide-react";
+import { Printer, Save, FileDown, QrCode, Barcode, ChevronLeft, Upload, Building, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 type PrinterModel = "48mm" | "58mm" | "80mm";
 type TemplateType = "default" | "custom";
@@ -34,9 +38,21 @@ interface PrinterSettingsFormValues {
   validationCode: string;
 }
 
+interface CompanySettingsFormValues {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  footerMessage: string;
+}
+
 const PrinterSettings = () => {
   const [selectedModel, setSelectedModel] = useState<PrinterModel>("58mm");
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>("default");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const navigate = useNavigate();
   
   const form = useForm<PrinterSettingsFormValues>({
     defaultValues: {
@@ -58,11 +74,215 @@ const PrinterSettings = () => {
     },
   });
 
-  const onSubmit = (data: PrinterSettingsFormValues) => {
-    console.log("Printer settings:", data);
-    toast.success("Configurações da impressora salvas com sucesso!");
+  const companyForm = useForm<CompanySettingsFormValues>({
+    defaultValues: {
+      name: "Nome da Empresa",
+      address: "Endereço da Empresa",
+      phone: "(00) 00000-0000",
+      email: "contato@empresa.com",
+      footerMessage: "Obrigado pela preferência!",
+    },
+  });
+
+  // Carregar configurações da impressora
+  useEffect(() => {
+    const loadPrinterSettings = async () => {
+      setLoadingSettings(true);
+      try {
+        const { data, error } = await supabase
+          .from('printer_settings')
+          .select('*')
+          .maybeSingle();
+
+        if (error) throw error;
+        
+        if (data) {
+          form.reset({
+            printerName: data.printer_name,
+            printerModel: data.printer_model as PrinterModel,
+            printerIP: data.printer_ip || "192.168.1.100",
+            numberOfCopies: data.number_of_copies || 1,
+            templateType: "default",
+            showLogo: data.show_logo || true,
+            showOrderNumber: data.show_order_number || true,
+            showQRCode: data.show_qr_code || true,
+            showBarcode: data.show_barcode || true,
+            securityCodeText: data.security_code_text || "Código de segurança",
+            customHeader: data.custom_header || "FICHA DE PEDIDO",
+            customFooter: data.custom_footer || "Obrigado pela preferência!",
+            authorizationNumber: data.authorization_number || "",
+            nsuNumber: data.nsu_number || "",
+            validationCode: data.validation_code || "",
+          });
+          
+          setSelectedModel(data.printer_model as PrinterModel);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    const loadCompanySettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('company_settings')
+          .select('*')
+          .maybeSingle();
+
+        if (error) throw error;
+        
+        if (data) {
+          companyForm.reset({
+            name: data.name,
+            address: data.address || "",
+            phone: data.phone || "",
+            email: data.email || "",
+            footerMessage: data.footer_message || "Obrigado pela preferência!",
+          });
+          
+          setLogoUrl(data.logo_url || null);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados da empresa:', error);
+      }
+    };
+
+    loadPrinterSettings();
+    loadCompanySettings();
+  }, [form, companyForm]);
+
+  const onSubmit = async (data: PrinterSettingsFormValues) => {
+    try {
+      const { error } = await supabase
+        .from('printer_settings')
+        .upsert({
+          id: 'default', // Usando um ID fixo para facilitar a atualização
+          printer_name: data.printerName,
+          printer_model: data.printerModel,
+          printer_ip: data.printerIP,
+          number_of_copies: data.numberOfCopies,
+          show_logo: data.showLogo,
+          show_order_number: data.showOrderNumber,
+          show_qr_code: data.showQRCode,
+          show_barcode: data.showBarcode,
+          security_code_text: data.securityCodeText,
+          custom_header: data.customHeader,
+          custom_footer: data.customFooter,
+          authorization_number: data.authorizationNumber,
+          nsu_number: data.nsuNumber,
+          validation_code: data.validationCode,
+        });
+
+      if (error) throw error;
+      
+      toast.success("Configurações da impressora salvas com sucesso!");
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      toast.error("Erro ao salvar configurações da impressora.");
+    }
+  };
+  
+  const onCompanySubmit = async (data: CompanySettingsFormValues) => {
+    try {
+      const { error } = await supabase
+        .from('company_settings')
+        .upsert({
+          id: 'default', // Usando um ID fixo para facilitar a atualização
+          name: data.name,
+          address: data.address,
+          phone: data.phone,
+          email: data.email,
+          footer_message: data.footerMessage,
+          logo_url: logoUrl,
+        });
+
+      if (error) throw error;
+      
+      toast.success("Dados da empresa salvos com sucesso!");
+    } catch (error) {
+      console.error('Erro ao salvar dados da empresa:', error);
+      toast.error("Erro ao salvar dados da empresa.");
+    }
   };
 
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Verificar tipo de arquivo
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      toast.error("Formato de arquivo não suportado. Use JPG, PNG ou GIF.");
+      return;
+    }
+
+    // Verificar tamanho (máximo 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. O tamanho máximo é 2MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Gerar um nome de arquivo único baseado em timestamp
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo_${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Fazer o upload para o bucket
+      const { error: uploadError, data } = await supabase.storage
+        .from('company_logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Obter a URL pública do arquivo
+      const { data: publicUrlData } = supabase.storage
+        .from('company_logos')
+        .getPublicUrl(filePath);
+
+      setLogoUrl(publicUrlData.publicUrl);
+      toast.success("Logo carregado com sucesso!");
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      toast.error("Erro ao fazer upload do logo.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!logoUrl) return;
+    
+    try {
+      // Extrair o nome do arquivo da URL
+      const fileName = logoUrl.split('/').pop();
+      if (!fileName) return;
+      
+      // Remover o arquivo do storage
+      const { error } = await supabase.storage
+        .from('company_logos')
+        .remove([fileName]);
+      
+      if (error) throw error;
+      
+      // Atualizar o registro da empresa para remover a referência ao logo
+      await supabase
+        .from('company_settings')
+        .upsert({
+          id: 'default',
+          logo_url: null
+        });
+      
+      setLogoUrl(null);
+      toast.success("Logo removido com sucesso!");
+    } catch (error) {
+      console.error('Erro ao remover logo:', error);
+      toast.error("Erro ao remover o logo.");
+    }
+  };
+  
   const testPrint = () => {
     toast.success("Impressão de teste enviada!");
   };
@@ -74,16 +294,27 @@ const PrinterSettings = () => {
 
   return (
     <Layout>
-      <h1 className="text-2xl font-bold mb-6 flex items-center">
-        <Printer className="mr-2" /> 
-        Configurações de Impressão
-      </h1>
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate(-1)}
+          className="mr-4"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+        </Button>
+        <h1 className="text-2xl font-bold flex items-center">
+          <Printer className="mr-2" /> 
+          Configurações de Impressão
+        </h1>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid grid-cols-2 mb-4">
+            <TabsList className="grid grid-cols-3 mb-4">
               <TabsTrigger value="general">Geral</TabsTrigger>
+              <TabsTrigger value="company">Dados da Empresa</TabsTrigger>
               <TabsTrigger value="template">Modelo de Ficha</TabsTrigger>
             </TabsList>
             
@@ -192,6 +423,146 @@ const PrinterSettings = () => {
                           <Save className="mr-2 h-4 w-4" /> Salvar Configurações
                         </Button>
                       </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="company">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dados da Empresa</CardTitle>
+                  <CardDescription>Informações que serão exibidas na ficha de impressão</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...companyForm}>
+                    <form onSubmit={companyForm.handleSubmit(onCompanySubmit)} className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex flex-col items-center p-4 border rounded-md">
+                          <Label className="mb-2 font-semibold">Logo da Empresa</Label>
+                          {logoUrl ? (
+                            <div className="flex flex-col items-center gap-4">
+                              <img 
+                                src={logoUrl} 
+                                alt="Logo da empresa" 
+                                className="max-w-[200px] max-h-[100px] object-contain mb-2" 
+                              />
+                              <Button 
+                                type="button" 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={handleRemoveLogo}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Remover Logo
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <Building className="h-16 w-16 text-gray-300 mb-2" />
+                              <p className="text-sm text-gray-500 mb-4">Nenhum logo carregado</p>
+                              <Label 
+                                htmlFor="logo-upload" 
+                                className="cursor-pointer bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 flex items-center gap-2"
+                              >
+                                <Upload className="h-4 w-4" />
+                                {isUploading ? "Carregando..." : "Carregar Logo"}
+                              </Label>
+                              <Input 
+                                id="logo-upload" 
+                                type="file" 
+                                accept="image/png,image/jpeg,image/gif" 
+                                className="hidden" 
+                                onChange={handleLogoUpload}
+                                disabled={isUploading}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      
+                        <FormField
+                          control={companyForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nome da Empresa</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={companyForm.control}
+                          name="address"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Endereço</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <FormField
+                            control={companyForm.control}
+                            name="phone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Telefone</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={companyForm.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        <FormField
+                          control={companyForm.control}
+                          name="footerMessage"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mensagem de Rodapé</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  {...field}
+                                  rows={3}
+                                  placeholder="Mensagem que aparecerá no rodapé da ficha"
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Esta mensagem será exibida no final da ficha de impressão.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <Button type="submit" className="w-full">
+                        <Save className="mr-2 h-4 w-4" /> Salvar Dados da Empresa
+                      </Button>
                     </form>
                   </Form>
                 </CardContent>
@@ -457,8 +828,17 @@ const PrinterSettings = () => {
                     selectedModel === "58mm" ? "w-56" : "w-72"
                   }`}
                 >
-                  <div className="text-center font-bold mb-2">FICHA DE PEDIDO</div>
-                  <div className="text-center text-xs mb-2">NOME DA EMPRESA</div>
+                  {form.watch("showLogo") && logoUrl && (
+                    <div className="flex justify-center mb-2">
+                      <img 
+                        src={logoUrl} 
+                        alt="Logo da empresa" 
+                        className="max-w-[90%] max-h-[50px] object-contain"
+                      />
+                    </div>
+                  )}
+                  <div className="text-center font-bold mb-2">{form.watch("customHeader")}</div>
+                  <div className="text-center text-xs mb-2">{companyForm.watch("name") || "NOME DA EMPRESA"}</div>
                   <div className="text-xs">
                     <div>--------------------------------</div>
                     <div className="font-bold">PEDIDO #0001</div>
@@ -510,7 +890,7 @@ const PrinterSettings = () => {
                         </div>
                       </div>
                     )}
-                    <div className="text-center mt-2">{form.watch("customFooter")}</div>
+                    <div className="text-center mt-2">{companyForm.watch("footerMessage")}</div>
                   </div>
                 </div>
               </div>

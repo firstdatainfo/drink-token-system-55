@@ -30,6 +30,42 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          footer_message: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          footer_message?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          footer_message?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -109,6 +145,66 @@ export type Database = {
           nsu?: string | null
           status?: string
           total_amount?: number
+          updated_at?: string | null
+          validation_code?: string | null
+        }
+        Relationships: []
+      }
+      printer_settings: {
+        Row: {
+          authorization_number: string | null
+          created_at: string | null
+          custom_footer: string | null
+          custom_header: string | null
+          id: string
+          nsu_number: string | null
+          number_of_copies: number | null
+          printer_ip: string | null
+          printer_model: string
+          printer_name: string
+          security_code_text: string | null
+          show_barcode: boolean | null
+          show_logo: boolean | null
+          show_order_number: boolean | null
+          show_qr_code: boolean | null
+          updated_at: string | null
+          validation_code: string | null
+        }
+        Insert: {
+          authorization_number?: string | null
+          created_at?: string | null
+          custom_footer?: string | null
+          custom_header?: string | null
+          id?: string
+          nsu_number?: string | null
+          number_of_copies?: number | null
+          printer_ip?: string | null
+          printer_model?: string
+          printer_name?: string
+          security_code_text?: string | null
+          show_barcode?: boolean | null
+          show_logo?: boolean | null
+          show_order_number?: boolean | null
+          show_qr_code?: boolean | null
+          updated_at?: string | null
+          validation_code?: string | null
+        }
+        Update: {
+          authorization_number?: string | null
+          created_at?: string | null
+          custom_footer?: string | null
+          custom_header?: string | null
+          id?: string
+          nsu_number?: string | null
+          number_of_copies?: number | null
+          printer_ip?: string | null
+          printer_model?: string
+          printer_name?: string
+          security_code_text?: string | null
+          show_barcode?: boolean | null
+          show_logo?: boolean | null
+          show_order_number?: boolean | null
+          show_qr_code?: boolean | null
           updated_at?: string | null
           validation_code?: string | null
         }
