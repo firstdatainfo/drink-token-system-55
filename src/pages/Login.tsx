@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ThumbsUp, Home } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -25,26 +26,48 @@ const Login = () => {
     
     setIsLoading(true);
     
-    // Simulação de autenticação
-    // Em um caso real, isso seria integrado com um backend
-    setTimeout(() => {
-      // Admin fixo para demonstração
-      if (email === "admin@example.com" && password === "admin123") {
-        toast.success("Login realizado com sucesso!");
-        
-        // Armazenar informações do usuário logado no localStorage
-        localStorage.setItem("user", JSON.stringify({ 
-          email,
-          isAdmin: true,
-          isLoggedIn: true
-        }));
-        
-        navigate("/admin");
+    try {
+      // Usar autenticação do Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Verificar se o usuário é um administrador
+      if (data.user) {
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (roleError) {
+          console.error("Erro ao verificar papel do usuário:", roleError);
+          toast.error("Erro ao verificar permissões de administrador");
+          setIsLoading(false);
+          return;
+        }
+
+        if (roleData?.role === "admin") {
+          toast.success("Login realizado com sucesso!");
+          navigate("/admin");
+        } else {
+          toast.error("Você não tem permissão para acessar a área de administrador");
+        }
       } else {
         toast.error("Credenciais inválidas");
       }
+    } catch (error: any) {
+      console.error("Erro de login:", error);
+      toast.error(error?.message || "Erro ao fazer login");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
   
   const handleVote = () => {
@@ -75,7 +98,7 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="seu.email@exemplo.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -126,4 +149,3 @@ const Login = () => {
 };
 
 export default Login;
-
