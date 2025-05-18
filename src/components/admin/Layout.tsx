@@ -1,5 +1,4 @@
-
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,12 +23,14 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [permissionsVerified, setPermissionsVerified] = useState(false);
 
-  // Melhorar verificação de acesso admin sem mostrar a tela de carregamento
+  // Verificação de acesso admin otimizada para evitar loops infinitos
   useEffect(() => {
-    let ignore = false;
+    // Executar a verificação apenas uma vez
+    if (permissionsVerified) return;
     
-    async function checkAdminAccess() {
+    const checkAdminAccess = async () => {
       try {
         console.log("Iniciando verificação de admin...");
         
@@ -60,8 +61,6 @@ export function Layout({ children }: LayoutProps) {
             .eq("role", "admin")
             .maybeSingle();
             
-          if (ignore) return;
-          
           if (roleError) {
             console.error("Erro ao verificar papel de admin:", roleError);
           }
@@ -84,8 +83,8 @@ export function Layout({ children }: LayoutProps) {
             }
           }
           
-          // Permitir acesso para usuário admin especial independentemente do status do papel no BD
-          if (ignore) return;
+          // Marcar como verificado e permitir acesso
+          setPermissionsVerified(true);
           return;
         }
         
@@ -96,8 +95,6 @@ export function Layout({ children }: LayoutProps) {
           .eq("user_id", userId)
           .eq("role", "admin");
           
-        if (ignore) return;
-        
         if (roleError) {
           console.error("Erro ao verificar papel de admin:", roleError);
           toast.error("Erro ao verificar permissões");
@@ -114,6 +111,7 @@ export function Layout({ children }: LayoutProps) {
         }
         
         console.log("Verificação de admin concluída com sucesso");
+        setPermissionsVerified(true);
       } catch (error) {
         console.error("Erro na verificação de autenticação:", error);
         toast.error("Erro ao verificar autenticação");
@@ -122,11 +120,7 @@ export function Layout({ children }: LayoutProps) {
     }
     
     checkAdminAccess();
-    
-    return () => {
-      ignore = true;
-    };
-  }, [navigate]);
+  }, [navigate, permissionsVerified]);
 
   const handleLogout = async () => {
     try {
