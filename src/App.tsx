@@ -14,6 +14,14 @@ import Reports from "./pages/admin/Reports";
 import PrinterSettings from "./pages/admin/PrinterSettings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import SettingsAI from "./pages/admin/settings/SettingsAI";
+import SettingsStone from "./pages/admin/settings/SettingsStone";
+import SettingsMercadoPago from "./pages/admin/settings/SettingsMercadoPago";
+import SettingsEFI from "./pages/admin/settings/SettingsEFI";
+import SettingsSicoob from "./pages/admin/settings/SettingsSicoob";
+import SettingsSicredi from "./pages/admin/settings/SettingsSicredi";
+import SettingsBancoBrasil from "./pages/admin/settings/SettingsBancoBrasil";
+import SettingsFiscal from "./pages/admin/settings/SettingsFiscal";
 
 const queryClient = new QueryClient();
 
@@ -32,8 +40,15 @@ const App = () => (
             <Route path="/admin/categories" element={<Categories />} />
             <Route path="/admin/reports" element={<Reports />} />
             <Route path="/admin/printer-settings" element={<PrinterSettings />} />
+            <Route path="/admin/settings/ai" element={<SettingsAI />} />
+            <Route path="/admin/settings/stone" element={<SettingsStone />} />
+            <Route path="/admin/settings/mercadopago" element={<SettingsMercadoPago />} />
+            <Route path="/admin/settings/efi" element={<SettingsEFI />} />
+            <Route path="/admin/settings/sicoob" element={<SettingsSicoob />} />
+            <Route path="/admin/settings/sicredi" element={<SettingsSicredi />} />
+            <Route path="/admin/settings/bancobrasil" element={<SettingsBancoBrasil />} />
+            <Route path="/admin/settings/fiscal" element={<SettingsFiscal />} />
             <Route path="/login" element={<Login />} />
-            {/* Redirect to login page if no route matches */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

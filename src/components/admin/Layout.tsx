@@ -1,4 +1,5 @@
-import { ReactNode, useState, useEffect, useCallback } from "react";
+
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  Printer
+  Printer,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,19 +26,17 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Verificação de acesso admin simplificada para evitar loops infinitos
   useEffect(() => {
-    // Use uma flag local para evitar atualizações de estado após desmontagem
     let isMounted = true;
     
     const checkAdminAccess = async () => {
       try {
-        // Tentar obter sessão do Supabase
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          console.log("Nenhuma sessão ativa encontrada, redirecionando para login");
           if (isMounted) {
             toast.error("Por favor, faça login para acessar a área administrativa");
             navigate("/login");
@@ -44,12 +44,10 @@ export function Layout({ children }: LayoutProps) {
           return;
         }
         
-        const userId = session.user.id;
         const userEmail = session.user.email;
         
         // Caso especial para rodrigodev@yahoo.com
         if (userEmail === "rodrigodev@yahoo.com") {
-          // Usuário especial, permitir acesso imediatamente
           if (isMounted) {
             setIsLoading(false);
           }
@@ -60,7 +58,7 @@ export function Layout({ children }: LayoutProps) {
         const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", session.user.id)
           .eq("role", "admin");
           
         if (roleError && isMounted) {
@@ -77,7 +75,6 @@ export function Layout({ children }: LayoutProps) {
           return;
         }
         
-        // Verificação concluída com sucesso
         if (isMounted) {
           setIsLoading(false);
         }
@@ -92,7 +89,6 @@ export function Layout({ children }: LayoutProps) {
     
     checkAdminAccess();
     
-    // Cleanup function para evitar memory leaks e atualizações após desmontagem
     return () => {
       isMounted = false;
     };
@@ -108,6 +104,10 @@ export function Layout({ children }: LayoutProps) {
       console.error("Erro ao fazer logout:", error);
       toast.error("Erro durante logout");
     }
+  };
+
+  const toggleSettingsMenu = () => {
+    setIsSettingsOpen(!isSettingsOpen);
   };
 
   const menuItems = [
@@ -136,6 +136,17 @@ export function Layout({ children }: LayoutProps) {
       path: "/admin/printer-settings",
       icon: <Printer className="h-5 w-5" />,
     },
+  ];
+
+  const integrationOptions = [
+    { name: "Integrações de IA", path: "/admin/settings/ai" },
+    { name: "Stone", path: "/admin/settings/stone" },
+    { name: "Mercado Pago", path: "/admin/settings/mercadopago" },
+    { name: "EFI", path: "/admin/settings/efi" },
+    { name: "Sicoob", path: "/admin/settings/sicoob" },
+    { name: "Sicredi", path: "/admin/settings/sicredi" },
+    { name: "Banco do Brasil", path: "/admin/settings/bancobrasil" },
+    { name: "Emissores Fiscais", path: "/admin/settings/fiscal" },
   ];
 
   const toggleMobileMenu = () => {
@@ -186,6 +197,41 @@ export function Layout({ children }: LayoutProps) {
               <span className="ml-3">{item.name}</span>
             </Link>
           ))}
+
+          {/* Botão de Configurações com dropdown */}
+          <div className="relative">
+            <button 
+              onClick={toggleSettingsMenu}
+              className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${
+                location.pathname.includes('/admin/settings')
+                  ? "bg-blue-600 text-white"
+                  : "hover:bg-gray-100"
+              }`}
+            >
+              <Settings className="h-5 w-5" />
+              <span className="ml-3">Configurações</span>
+              <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${isSettingsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isSettingsOpen && (
+              <div className="pl-10 mt-1 space-y-1 border-l-2 border-gray-200 ml-4">
+                {integrationOptions.map((option) => (
+                  <Link
+                    key={option.path}
+                    to={option.path}
+                    className={`flex items-center px-4 py-2 rounded-md text-sm transition-colors ${
+                      location.pathname === option.path
+                        ? "bg-blue-100 text-blue-800 font-medium"
+                        : "hover:bg-gray-50 text-gray-700"
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {option.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
