@@ -1,7 +1,6 @@
 
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { Cart } from "@/components/Cart";
-import { categories } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -34,7 +33,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm">
-            <CategoryTabs categories={categories} />
+            <CategoryTabs />
           </div>
             
           <div className="lg:col-span-1">
