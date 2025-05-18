@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +29,9 @@ interface PrinterSettingsFormValues {
   securityCodeText: string;
   customHeader: string;
   customFooter: string;
+  authorizationNumber: string;
+  nsuNumber: string;
+  validationCode: string;
 }
 
 const PrinterSettings = () => {
@@ -50,6 +52,9 @@ const PrinterSettings = () => {
       securityCodeText: "Código de segurança",
       customHeader: "FICHA DE PEDIDO",
       customFooter: "Obrigado pela preferência!",
+      authorizationNumber: "",
+      nsuNumber: "",
+      validationCode: "",
     },
   });
 
@@ -327,6 +332,50 @@ const PrinterSettings = () => {
                           />
                         </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="authorizationNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Número de Autorização</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="123456789" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="nsuNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Número NSU</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="000123" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="validationCode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Código Validador</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="ABC123" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
                         <FormField
                           control={form.control}
                           name="securityCodeText"
@@ -427,6 +476,24 @@ const PrinterSettings = () => {
                     <div>RECEBIDO: R$ 50,00</div>
                     <div>TROCO: R$ 10,00</div>
                     <div>--------------------------------</div>
+                    
+                    {/* Dados de validação */}
+                    {(form.watch("authorizationNumber") || form.watch("nsuNumber") || form.watch("validationCode")) && (
+                      <>
+                        <div className="mt-2 mb-1">DADOS DE VALIDAÇÃO:</div>
+                        {form.watch("authorizationNumber") && (
+                          <div>AUT: {form.watch("authorizationNumber")}</div>
+                        )}
+                        {form.watch("nsuNumber") && (
+                          <div>NSU: {form.watch("nsuNumber")}</div>
+                        )}
+                        {form.watch("validationCode") && (
+                          <div>COD: {form.watch("validationCode")}</div>
+                        )}
+                        <div>--------------------------------</div>
+                      </>
+                    )}
+                    
                     {form.watch("showQRCode") && (
                       <div className="mt-2 text-center">
                         <div className="flex justify-center mb-1">
@@ -479,6 +546,13 @@ const PrinterSettings = () => {
                         <div className="grid grid-cols-2 items-center gap-4">
                           <Label htmlFor="barcodeStatus">Código de Barras:</Label>
                           <div id="barcodeStatus" className="font-medium">{form.watch("showBarcode") ? "Visível" : "Oculto"}</div>
+                        </div>
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <Label htmlFor="validationData">Dados de Validação:</Label>
+                          <div id="validationData" className="font-medium">
+                            {(form.watch("authorizationNumber") || form.watch("nsuNumber") || form.watch("validationCode")) 
+                              ? "Visível" : "Oculto"}
+                          </div>
                         </div>
                       </div>
                     </div>
