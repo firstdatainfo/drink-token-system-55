@@ -8,6 +8,11 @@ import { useNavigate } from "react-router-dom";
 const Index = () => {
   const navigate = useNavigate();
 
+  const handleAdminAccess = () => {
+    // Redirecionar para a página de login em vez de diretamente para o admin
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-md py-4 sticky top-0 z-10">
@@ -19,7 +24,7 @@ const Index = () => {
           <Button 
             variant="outline" 
             className="bg-pdv-blue text-white hover:bg-pdv-blue/80"
-            onClick={() => navigate("/admin")}
+            onClick={handleAdminAccess}
           >
             Área Administrativa
           </Button>

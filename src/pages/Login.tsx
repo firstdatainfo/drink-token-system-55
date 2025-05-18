@@ -29,6 +29,14 @@ const Login = () => {
       // Admin fixo para demonstração
       if (email === "admin@example.com" && password === "admin123") {
         toast.success("Login realizado com sucesso!");
+        
+        // Armazenar informações do usuário logado no localStorage
+        localStorage.setItem("user", JSON.stringify({ 
+          email,
+          isAdmin: true,
+          isLoggedIn: true
+        }));
+        
         navigate("/admin");
       } else {
         toast.error("Credenciais inválidas");

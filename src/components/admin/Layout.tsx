@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -24,7 +24,18 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    // Verificar se o usuário está logado ao carregar o componente
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    
+    if (!user.isLoggedIn) {
+      toast.error("Acesso restrito. Por favor, faça login.");
+      navigate("/login");
+    }
+  }, [navigate]);
+
   const handleLogout = () => {
+    localStorage.removeItem("user");
     toast.success("Logout realizado com sucesso!");
     navigate("/login");
   };
