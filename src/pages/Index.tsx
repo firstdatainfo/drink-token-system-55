@@ -2,16 +2,27 @@
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { Cart } from "@/components/Cart";
 import { categories } from "@/data/mockData";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-md py-4 sticky top-0 z-10">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-pdv-blue flex items-center">
             <span className="bg-pdv-blue text-white p-2 rounded-md mr-2 shadow-sm">PDV</span>
             Sistema de Vendas de Fichas
           </h1>
+          <Button 
+            variant="outline" 
+            className="bg-pdv-blue text-white hover:bg-pdv-blue/80"
+            onClick={() => navigate("/admin")}
+          >
+            Área Administrativa
+          </Button>
         </div>
       </header>
         
