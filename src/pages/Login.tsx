@@ -70,8 +70,9 @@ const Login = () => {
           toast.success("Login realizado com sucesso!");
           navigate("/admin");
         } else {
-          toast.error("Você não tem permissão para acessar a área de administrador");
-          // Garantir que fazemos o logout se o usuário não tem permissão
+          // Mostrar uma mensagem mais específica sobre a falta de permissões
+          toast.error("Você não possui permissões de administrador. Entre em contato com o administrador do sistema.");
+          console.log("Usuário sem permissões de administrador:", data.user.email);
           await supabase.auth.signOut();
           localStorage.removeItem("supabase_auth_session");
         }
