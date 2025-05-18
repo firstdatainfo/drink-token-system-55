@@ -9,7 +9,152 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string | null
+          id: number
+          order_id: number | null
+          product_id: number | null
+          product_name: string
+          product_price: number
+          quantity: number
+          subtotal: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          order_id?: number | null
+          product_id?: number | null
+          product_name: string
+          product_price: number
+          quantity: number
+          subtotal: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          order_id?: number | null
+          product_id?: number | null
+          product_name?: string
+          product_price?: number
+          quantity?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          authorization_number: string | null
+          created_at: string | null
+          customer_name: string | null
+          id: number
+          nsu: string | null
+          status: string
+          total_amount: number
+          updated_at: string | null
+          validation_code: string | null
+        }
+        Insert: {
+          authorization_number?: string | null
+          created_at?: string | null
+          customer_name?: string | null
+          id?: number
+          nsu?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string | null
+          validation_code?: string | null
+        }
+        Update: {
+          authorization_number?: string | null
+          created_at?: string | null
+          customer_name?: string | null
+          id?: number
+          nsu?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string | null
+          validation_code?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category_id: number | null
+          created_at: string | null
+          description: string | null
+          id: number
+          image: string | null
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          category_id?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          image?: string | null
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          image?: string | null
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

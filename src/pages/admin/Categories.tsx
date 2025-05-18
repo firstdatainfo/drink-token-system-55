@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,16 +7,96 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Category } from "@/types";
-import { categories as mockCategories } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Categories = () => {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [categoryName, setCategoryName] = useState("");
+  const queryClient = useQueryClient();
+
+  // Fetch categories from Supabase
+  const { data: categories = [], isLoading, error } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('id');
+      
+      if (error) throw error;
+      return data as Category[];
+    },
+  });
+
+  // Add category mutation
+  const addCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert([{ name }])
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success("Categoria adicionada com sucesso!");
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error adding category:", error);
+      toast.error("Erro ao adicionar categoria.");
+    },
+  });
+
+  // Update category mutation
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const { data, error } = await supabase
+        .from('categories')
+        .update({ name })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success("Categoria atualizada com sucesso!");
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error updating category:", error);
+      toast.error("Erro ao atualizar categoria.");
+    },
+  });
+
+  // Delete category mutation
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success("Categoria excluída com sucesso!");
+    },
+    onError: (error) => {
+      console.error("Error deleting category:", error);
+      toast.error("Erro ao excluir categoria.");
+    },
+  });
 
   const handleAddEdit = (category: Category | null = null) => {
     if (category) {
@@ -31,8 +111,7 @@ const Categories = () => {
 
   const handleDelete = (id: number) => {
     if (confirm("Tem certeza que deseja excluir esta categoria?")) {
-      setCategories(categories.filter(category => category.id !== id));
-      toast.success("Categoria excluída com sucesso!");
+      deleteCategoryMutation.mutate(id);
     }
   };
 
@@ -46,24 +125,17 @@ const Categories = () => {
     
     if (currentCategory) {
       // Edit existing category
-      setCategories(categories.map(category => 
-        category.id === currentCategory.id 
-          ? { ...category, name: categoryName } 
-          : category
-      ));
-      toast.success("Categoria atualizada com sucesso!");
+      updateCategoryMutation.mutate({ id: currentCategory.id, name: categoryName });
     } else {
       // Add new category
-      const newCategory: Category = {
-        id: Math.max(...categories.map(c => c.id), 0) + 1,
-        name: categoryName
-      };
-      setCategories([...categories, newCategory]);
-      toast.success("Categoria adicionada com sucesso!");
+      addCategoryMutation.mutate(categoryName);
     }
-    
-    setIsDialogOpen(false);
   };
+
+  if (error) {
+    toast.error("Erro ao carregar categorias.");
+    console.error("Error loading categories:", error);
+  }
 
   return (
     <Layout>
@@ -79,40 +151,46 @@ const Categories = () => {
           <CardTitle>Lista de Categorias</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.map((category) => (
-                <TableRow key={category.id}>
-                  <TableCell>{category.id}</TableCell>
-                  <TableCell>{category.name}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleAddEdit(category)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(category.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin text-pdv-blue" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {categories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell>{category.id}</TableCell>
+                    <TableCell>{category.name}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleAddEdit(category)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleDelete(category.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
       
@@ -140,11 +218,19 @@ const Categories = () => {
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsDialogOpen(false)}
+                disabled={addCategoryMutation.isPending || updateCategoryMutation.isPending}
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {currentCategory ? "Atualizar" : "Adicionar"}
+              <Button 
+                type="submit"
+                disabled={addCategoryMutation.isPending || updateCategoryMutation.isPending}
+              >
+                {(addCategoryMutation.isPending || updateCategoryMutation.isPending) ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
+                ) : (
+                  currentCategory ? "Atualizar" : "Adicionar"
+                )}
               </Button>
             </DialogFooter>
           </form>
