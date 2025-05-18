@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,11 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ImageIcon, Image } from "lucide-react";
 import { toast } from "sonner";
 import { Product, Category } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 const Products = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -23,6 +25,7 @@ const Products = () => {
     image: "",
     description: ""
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -147,6 +150,7 @@ const Products = () => {
         image: product.image || "",
         description: product.description || ""
       });
+      setImagePreview(product.image || null);
     } else {
       setCurrentProduct(null);
       setFormData({
@@ -156,6 +160,7 @@ const Products = () => {
         image: "",
         description: ""
       });
+      setImagePreview(null);
     }
     setIsDialogOpen(true);
   };
@@ -207,6 +212,26 @@ const Products = () => {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const imageUrl = e.target.value;
+    setFormData({...formData, image: imageUrl});
+    
+    // Update image preview
+    if (imageUrl.trim()) {
+      setImagePreview(imageUrl);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  const isImageValid = (url: string | null): boolean => {
+    if (!url) return false;
+    // Simple check if the URL might be a valid image URL
+    return url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)(\?.*)?$/i) !== null || 
+           url.startsWith('http') || 
+           url.startsWith('data:image');
+  };
+
   if (productsError) {
     toast.error("Erro ao carregar produtos.");
     console.error("Error loading products:", productsError);
@@ -247,20 +272,27 @@ const Products = () => {
                   <TableRow key={product.id}>
                     <TableCell>{product.id}</TableCell>
                     <TableCell>
-                      {product.image ? (
-                        <img 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="w-10 h-10 object-contain" 
-                        />
+                      {isImageValid(product.image) ? (
+                        <div className="w-16 h-16 rounded overflow-hidden bg-gray-50 border">
+                          <AspectRatio ratio={1/1} className="flex items-center justify-center">
+                            <img 
+                              src={product.image} 
+                              alt={product.name} 
+                              className="w-full h-full object-contain" 
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder.svg';
+                              }}
+                            />
+                          </AspectRatio>
+                        </div>
                       ) : (
-                        <div className="w-10 h-10 bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                          Sem img
+                        <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded border">
+                          <ImageIcon className="h-8 w-8 text-gray-400" />
                         </div>
                       )}
                     </TableCell>
                     <TableCell>{product.name}</TableCell>
-                    <TableCell>R$ {product.price.toFixed(2)}</TableCell>
+                    <TableCell>R$ {product.price.toFixed(2).replace('.', ',')}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button 
@@ -288,7 +320,7 @@ const Products = () => {
       </Card>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {currentProduct ? "Editar Produto" : "Adicionar Produto"}
@@ -351,11 +383,39 @@ const Products = () => {
               <Input 
                 id="image" 
                 value={formData.image} 
-                onChange={(e) => setFormData({...formData, image: e.target.value})}
+                onChange={handleImageChange}
+                placeholder="https://exemplo.com/imagem.jpg"
               />
             </div>
+
+            {/* Image Preview */}
+            {imagePreview ? (
+              <div className="mt-4 border rounded-md p-2">
+                <Label className="block mb-2 text-sm">Prévia da imagem:</Label>
+                <div className="bg-gray-50 rounded overflow-hidden h-48 flex items-center justify-center">
+                  <AspectRatio ratio={1/1} className="w-full h-full">
+                    <img 
+                      src={imagePreview} 
+                      alt="Prévia"
+                      className="object-contain w-full h-full"
+                      onError={(e) => {
+                        toast.error("Não foi possível carregar esta imagem. Verifique a URL.");
+                        setImagePreview(null);
+                      }}
+                    />
+                  </AspectRatio>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 border rounded-md p-2 bg-gray-50 h-28 flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <Image className="mx-auto h-8 w-8 mb-2 text-gray-400" />
+                  <p className="text-sm">Sem prévia de imagem</p>
+                </div>
+              </div>
+            )}
             
-            <DialogFooter>
+            <DialogFooter className="mt-6">
               <Button 
                 type="button" 
                 variant="outline" 
