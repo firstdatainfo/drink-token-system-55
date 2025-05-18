@@ -37,8 +37,6 @@ const Login = () => {
         throw error;
       }
 
-      console.log("Login bem-sucedido:", data);
-
       // Verificar se o usuário é um administrador
       if (data.user) {
         // Consulta na tabela user_roles para verificar se é admin
@@ -47,8 +45,6 @@ const Login = () => {
           .select("*")
           .eq("user_id", data.user.id)
           .eq("role", "admin");
-
-        console.log("Dados de role:", roleData, "Erro de role:", roleError);
 
         if (roleError) {
           console.error("Erro ao verificar papel do usuário:", roleError);
@@ -71,7 +67,7 @@ const Login = () => {
           navigate("/admin");
         } else {
           // Mostrar uma mensagem mais específica sobre a falta de permissões
-          toast.error("Você não possui permissões de administrador. Entre em contato com o administrador do sistema.");
+          toast.error("Você não possui permissões de administrador");
           console.log("Usuário sem permissões de administrador:", data.user.email);
           await supabase.auth.signOut();
           localStorage.removeItem("supabase_auth_session");
