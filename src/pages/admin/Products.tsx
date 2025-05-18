@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Button } from "@/components/ui/button";
@@ -197,6 +196,17 @@ const Products = () => {
     }
   };
 
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Permite entrada de números decimais
+    const value = e.target.value;
+    // Só aceita números e vírgula/ponto (para decimal)
+    if (value === '' || /^[0-9]*[.,]?[0-9]*$/.test(value)) {
+      // Converte para número com . como separador decimal
+      const numericValue = parseFloat(value.replace(',', '.')) || 0;
+      setFormData({...formData, price: numericValue});
+    }
+  };
+
   if (productsError) {
     toast.error("Erro ao carregar produtos.");
     console.error("Error loading products:", productsError);
@@ -300,10 +310,10 @@ const Products = () => {
               <Label htmlFor="price">Preço (R$)</Label>
               <Input 
                 id="price" 
-                type="number" 
-                step="0.01"
-                value={formData.price} 
-                onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
+                inputMode="decimal"
+                value={formData.price === 0 ? '' : formData.price.toString().replace('.', ',')} 
+                onChange={handlePriceChange}
+                placeholder="0,00"
                 required
               />
             </div>

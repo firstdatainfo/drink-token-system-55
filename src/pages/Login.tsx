@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,62 +17,12 @@ const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [debugMessage, setDebugMessage] = useState("");
-  const [authChecked, setAuthChecked] = useState(false);
-
+  
   // Debug helper
   const addDebug = (message) => {
     console.log(message);
     setDebugMessage(prev => prev + "\n" + message);
   };
-
-  // Check for existing session on component mount - only once
-  useEffect(() => {
-    if (authChecked) return;
-    
-    const checkSession = async () => {
-      try {
-        if (debugMode) addDebug("Checking for existing session...");
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user?.email) {
-          if (debugMode) addDebug(`Found session for ${session.user.email}`);
-          
-          // For the special admin user
-          if (session.user.email === "rodrigodev@yahoo.com") {
-            if (debugMode) addDebug("Special admin user detected, redirecting to admin");
-            navigate("/admin");
-            return;
-          }
-          
-          // Check if user has admin role
-          const { data: userRoles } = await supabase
-            .from("user_roles")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .eq("role", "admin");
-            
-          if (userRoles && userRoles.length > 0) {
-            if (debugMode) addDebug("User has admin role, redirecting to admin");
-            navigate("/admin");
-          } else {
-            if (debugMode) addDebug("User has no admin permissions");
-            toast.error("Você não possui permissões de administrador");
-          }
-        } else {
-          if (debugMode) addDebug("No active session found");
-        }
-        
-        setAuthChecked(true);
-      } catch (error) {
-        console.error("Session check error:", error);
-        if (debugMode) addDebug(`Session check error: ${error.message}`);
-        setAuthChecked(true);
-      }
-    };
-    
-    checkSession();
-  }, [navigate, debugMode, authChecked]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

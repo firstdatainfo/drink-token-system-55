@@ -1,5 +1,4 @@
-
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +16,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 
 interface LayoutProps {
   children: ReactNode;
@@ -28,58 +26,8 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-
-  // Verificação de acesso admin uma única vez
-  useEffect(() => {
-    const checkAdminAccess = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          toast.error("Por favor, faça login para acessar a área administrativa");
-          navigate("/login");
-          return;
-        }
-        
-        const userEmail = session.user.email;
-        
-        // Caso especial para rodrigodev@yahoo.com
-        if (userEmail === "rodrigodev@yahoo.com") {
-          setIsAuthChecking(false);
-          return;
-        }
-        
-        // Verificação de admin para outros usuários
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .eq("role", "admin");
-          
-        if (roleError) {
-          console.error("Erro ao verificar permissões:", roleError);
-          toast.error("Erro ao verificar permissões");
-          navigate("/login");
-          return;
-        }
-        
-        if (!roleData || roleData.length === 0) {
-          toast.error("Você não tem permissão para acessar esta área");
-          navigate("/login");
-          return;
-        }
-        
-        setIsAuthChecking(false);
-      } catch (error) {
-        console.error("Erro na verificação de autenticação:", error);
-        toast.error("Erro na verificação de autenticação");
-        navigate("/login");
-      }
-    };
-
-    checkAdminAccess();
-  }, [navigate]);
+  
+  // Removida a verificação automática de autenticação ao iniciar
 
   const handleLogout = async () => {
     try {
@@ -140,19 +88,6 @@ export function Layout({ children }: LayoutProps) {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Se estiver carregando, mostre um indicador simples
-  if (isAuthChecking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full border-4 border-gray-300 border-t-pdv-blue h-12 w-12 mb-4"></div>
-          <p>Verificando acesso...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Mostrar conteúdo principal
   return (
     <div className="flex min-h-screen bg-gray-50 relative">
       {/* Mobile Menu Button */}
