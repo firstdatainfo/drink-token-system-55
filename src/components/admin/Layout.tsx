@@ -97,7 +97,7 @@ export function Layout({
           <h1 className="text-blue-600 font-extrabold text-sm px-[46px] mx-0 my-[11px] py-0">Painel de Admin</h1>
         </div>
 
-        <nav className="px-3 mt-4 space-y-1">
+        <nav className="mt-4 space-y-1 px-[38px] my-[19px] py-[14px] mx-0">
           {menuItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center px-3 py-2 rounded-md transition-colors ${location.pathname === item.path ? "bg-blue-600 text-white" : "hover:bg-gray-100"}`} onClick={() => setIsMobileMenuOpen(false)}>
               {item.icon}
               <span className="ml-2 text-sm lg:text-base">{item.name}</span>
