@@ -41,24 +41,25 @@ const Login = () => {
 
       // Verificar se o usuário é um administrador
       if (data.user) {
-        // Consulta direta na tabela user_roles usando o ID do usuário
+        // Consulta na tabela user_roles para verificar se é admin
         const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("*")
           .eq("user_id", data.user.id)
-          .single();
+          .eq("role", "admin");
 
         console.log("Dados de role:", roleData, "Erro de role:", roleError);
 
-        if (roleError && roleError.code !== 'PGRST116') {
+        if (roleError) {
           console.error("Erro ao verificar papel do usuário:", roleError);
           toast.error("Erro ao verificar permissões de administrador");
+          await supabase.auth.signOut();
           setIsLoading(false);
           return;
         }
 
         // Se o usuário tiver algum registro na tabela user_roles com role = admin
-        if (roleData && roleData.role === "admin") {
+        if (roleData && roleData.length > 0) {
           // Armazenar a sessão do usuário localmente para persistência
           localStorage.setItem("supabase_auth_session", JSON.stringify({
             user: data.user,
