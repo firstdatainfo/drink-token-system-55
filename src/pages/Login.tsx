@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { ThumbsUp } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [voteCount, setVoteCount] = useState(0);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +45,11 @@ const Login = () => {
       }
       setIsLoading(false);
     }, 1000);
+  };
+  
+  const handleVote = () => {
+    setVoteCount(prev => prev + 1);
+    toast.success(`Obrigado pelo seu voto! Total: ${voteCount + 1}`);
   };
 
   return (
@@ -88,10 +95,19 @@ const Login = () => {
             </div>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             Área restrita para administradores do sistema
           </p>
+          <div className="flex items-center justify-center w-full">
+            <Button 
+              variant="outline" 
+              className="bg-green-500 text-white hover:bg-green-600"
+              onClick={handleVote}
+            >
+              <ThumbsUp className="mr-2" /> Votar ({voteCount})
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>
