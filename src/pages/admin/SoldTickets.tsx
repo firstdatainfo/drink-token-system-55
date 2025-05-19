@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,10 +52,15 @@ const SoldTickets = () => {
           throw ordersError;
         }
         
-        console.log(`Encontrados ${orders?.length || 0} pedidos`);
+        if (!orders) {
+          console.log("Nenhum pedido encontrado para o período");
+          return [];
+        }
+        
+        console.log(`Encontrados ${orders.length} pedidos`);
         
         // Para cada pedido, buscar seus itens
-        const ordersWithItems = await Promise.all((orders || []).map(async (order) => {
+        const ordersWithItems = await Promise.all(orders.map(async (order) => {
           const { data: items, error: itemsError } = await supabase
             .from('order_items')
             .select('product_name, quantity, product_price, subtotal')
@@ -183,7 +187,19 @@ const SoldTickets = () => {
           </Button>
           
           <ExportOptions 
-            exportData={exportData}
+            exportData={ticketSales?.map(ticket => ({
+              id: ticket.id,
+              data: format(new Date(ticket.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+              cliente: ticket.customer_name || "Não informado",
+              status: ticket.status === "completed" ? "Concluído" : 
+                      ticket.status === "cancelled" ? "Cancelado" : "Pendente",
+              pagamento: ticket.payment_method === "cash" ? "Dinheiro" : 
+                        ticket.payment_method === "credit" ? "Crédito" : 
+                        ticket.payment_method === "debit" ? "Débito" : 
+                        ticket.payment_method === "pix" ? "PIX" : "Outro",
+              valor: Number(ticket.total_amount).toFixed(2),
+              itens: ticket.items.length
+            })) || []}
             filename="fichas_vendidas"
           />
         </div>
@@ -287,9 +303,9 @@ const SoldTickets = () => {
             <div className="flex justify-center items-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>
-          ) : filteredSales && filteredSales.length > 0 ? (
+          ) : ticketSales && ticketSales.length > 0 ? (
             <div className="space-y-6">
-              {filteredSales.map((order) => (
+              {ticketSales.filter(sale => activeTab === "all" || sale.payment_method === activeTab).map((order) => (
                 <Card key={order.id} className="overflow-hidden">
                   <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
                     <div>
