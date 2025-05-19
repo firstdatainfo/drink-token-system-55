@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ const Products = () => {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    price: 0,
+    price: "", // Alterado para string
     category_id: 0,
     image: "",
     description: ""
@@ -145,7 +144,7 @@ const Products = () => {
       setCurrentProduct(product);
       setFormData({
         name: product.name,
-        price: product.price,
+        price: product.price.toFixed(2).replace('.', ','), // Formata para string com vírgula
         category_id: product.category_id || 0,
         image: product.image || "",
         description: product.description || ""
@@ -155,7 +154,7 @@ const Products = () => {
       setCurrentProduct(null);
       setFormData({
         name: "",
-        price: 0,
+        price: "", // Inicializa como string vazia
         category_id: categories.length > 0 ? categories[0].id : 0,
         image: "",
         description: ""
@@ -179,37 +178,63 @@ const Products = () => {
       return;
     }
     
-    if (formData.price <= 0) {
+    const priceString = formData.price.trim();
+    const priceAsNumber = parseFloat(priceString.replace(',', '.')) || 0;
+
+    if (priceAsNumber <= 0) {
       toast.error("O preço deve ser maior que zero");
       return;
     }
     
+    // Validação adicional para o formato do preço (opcional, mas recomendado)
+    if (!/^\d+(,\d{1,2})?$/.test(priceString.replace('.',',')) && priceString !== "" && !/^\d+$/.test(priceString)) {
+      if (priceString !== "" && !/^\d+(,\d{1,2})?$/.test(priceString) && !/^\d+$/.test(priceString.replace(',','.'))) {
+         toast.error("Formato de preço inválido. Use, por exemplo, 12,90 ou 12.");
+         return;
+      }
+    }
+    
     const productData = {
       name: formData.name,
-      price: formData.price,
+      price: priceAsNumber, // Usa o número convertido
       category_id: formData.category_id,
       image: formData.image,
       description: formData.description,
     };
 
     if (currentProduct) {
-      // Update existing product
       updateProductMutation.mutate({ id: currentProduct.id, ...productData });
     } else {
-      // Add new product
       addProductMutation.mutate(productData);
     }
   };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    let value = e.target.value;
+
+    // Remove caracteres não numéricos, exceto vírgula (ponto será convertido)
+    value = value.replace(/[^\d,.]/g, "");
     
-    // Accept both comma and period as decimal separators
-    if (value === '' || /^\d*[.,]?\d*$/.test(value)) {
-      // Convert to number with . as decimal separator
-      const numericValue = parseFloat(value.replace(',', '.')) || 0;
-      setFormData({...formData, price: numericValue});
+    // Substitui ponto por vírgula para consistência na máscara
+    value = value.replace(/\./g, ",");
+
+    // Garante que haja apenas uma vírgula
+    const firstCommaIndex = value.indexOf(',');
+    if (firstCommaIndex !== -1) {
+      // Mantém tudo até a primeira vírgula, e o restante sem vírgulas
+      value = value.substring(0, firstCommaIndex + 1) + value.substring(firstCommaIndex + 1).replace(/,/g, "");
     }
+
+    // Limita a duas casas decimais
+    const parts = value.split(',');
+    if (parts.length > 1) {
+      if (parts[1].length > 2) {
+        parts[1] = parts[1].substring(0, 2);
+      }
+      value = parts.join(',');
+    }
+    
+    setFormData({ ...formData, price: value });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,8 +367,9 @@ const Products = () => {
               <Label htmlFor="price">Preço (R$)</Label>
               <Input 
                 id="price" 
-                inputMode="decimal"
-                value={formData.price === 0 ? '' : formData.price.toString().replace('.', ',')} 
+                inputMode="decimal" // Mantém para teclado numérico em mobile
+                // type="text" é o padrão, o que é bom para controlar o valor como string
+                value={formData.price} // Direto da string formData.price
                 onChange={handlePriceChange}
                 placeholder="0,00"
                 required
