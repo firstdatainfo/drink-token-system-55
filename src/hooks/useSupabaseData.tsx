@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Category, Product } from "@/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function useCategories() {
   return useQuery({
@@ -15,6 +16,7 @@ export function useCategories() {
       
       if (error) {
         console.error("Erro ao buscar categorias:", error);
+        toast.error("Falha ao carregar categorias");
         throw error;
       }
       
@@ -36,6 +38,7 @@ export function useProducts() {
       
       if (productsError) {
         console.error("Erro ao buscar produtos:", productsError);
+        toast.error("Falha ao carregar produtos");
         throw productsError;
       }
       
@@ -71,6 +74,7 @@ export function useProductsByCategoryId(categoryId: number | null) {
       
       if (productsError) {
         console.error("Erro ao buscar produtos por categoria:", productsError);
+        toast.error("Falha ao carregar produtos da categoria");
         throw productsError;
       }
       
@@ -86,4 +90,64 @@ export function useProductsByCategoryId(categoryId: number | null) {
     },
     enabled: categoryId !== null,
   });
+}
+
+// Nova função para upload de imagem
+export async function uploadProductImage(file: File) {
+  try {
+    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    
+    const { data, error } = await supabase.storage
+      .from('product_images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+      
+    if (error) {
+      console.error("Erro no upload da imagem:", error);
+      toast.error(`Erro no upload: ${error.message}`);
+      throw error;
+    }
+    
+    // Obter a URL pública da imagem
+    const { data: publicUrlData } = supabase.storage
+      .from('product_images')
+      .getPublicUrl(data.path);
+      
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error("Falha no upload da imagem:", error);
+    toast.error("Falha no upload da imagem");
+    throw error;
+  }
+}
+
+// Nova função para deletar imagem
+export async function deleteProductImage(imagePath: string) {
+  try {
+    // Extrair o caminho do arquivo da URL completa
+    const path = imagePath.split('/').pop();
+    
+    if (!path) {
+      console.error("Caminho da imagem inválido");
+      return false;
+    }
+    
+    const { error } = await supabase.storage
+      .from('product_images')
+      .remove([path]);
+      
+    if (error) {
+      console.error("Erro ao deletar imagem:", error);
+      toast.error(`Erro ao deletar imagem: ${error.message}`);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Falha ao deletar imagem:", error);
+    toast.error("Falha ao deletar imagem");
+    return false;
+  }
 }
