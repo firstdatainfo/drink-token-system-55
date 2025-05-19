@@ -1,0 +1,212 @@
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Layout } from "@/components/admin/Layout";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Receipt, Loader2, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+const SoldTickets = () => {
+  const [dateRange, setDateRange] = useState({
+    start: subDays(new Date(), 7),  // Últimos 7 dias por padrão
+    end: new Date()
+  });
+
+  // Consulta para obter os pedidos e itens dos pedidos
+  const { data: ticketSales, isLoading } = useQuery({
+    queryKey: ['sold-tickets', dateRange],
+    queryFn: async () => {
+      try {
+        // Converter datas para formato ISO string para a query
+        const startDate = startOfDay(dateRange.start).toISOString();
+        const endDate = endOfDay(dateRange.end).toISOString();
+        
+        // Buscar os pedidos entre as datas
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id, created_at, total_amount, customer_name, status')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate)
+          .order('created_at', { ascending: false });
+          
+        if (ordersError) throw ordersError;
+        
+        // Para cada pedido, buscar seus itens
+        const ordersWithItems = await Promise.all(orders.map(async (order) => {
+          const { data: items, error: itemsError } = await supabase
+            .from('order_items')
+            .select('product_name, quantity, product_price, subtotal')
+            .eq('order_id', order.id);
+            
+          if (itemsError) throw itemsError;
+          
+          return {
+            ...order,
+            items: items || []
+          };
+        }));
+        
+        return ordersWithItems;
+      } catch (error) {
+        console.error("Erro ao buscar fichas vendidas:", error);
+        toast.error("Erro ao carregar as fichas vendidas");
+        return [];
+      }
+    }
+  });
+  
+  // Função para filtrar últimos dias
+  const filterLastDays = (days: number) => {
+    setDateRange({
+      start: subDays(new Date(), days),
+      end: new Date()
+    });
+  };
+  
+  // Calcular totais
+  const totalSales = ticketSales?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+  const totalTickets = ticketSales?.reduce((sum, order) => 
+    sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0), 0) || 0;
+
+  return (
+    <Layout>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2">Fichas Vendidas</h1>
+        <p className="text-gray-600 text-sm">Visualize todas as fichas vendidas e seus detalhes</p>
+      </div>
+      
+      {/* Filtros de Data */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center">
+            <Calendar className="h-5 w-5 mr-2" />
+            Filtrar por período
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => filterLastDays(1)}
+            className="text-sm"
+          >
+            Hoje
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => filterLastDays(7)}
+            className="text-sm"
+          >
+            Últimos 7 dias
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => filterLastDays(30)}
+            className="text-sm"
+          >
+            Últimos 30 dias
+          </Button>
+        </CardContent>
+      </Card>
+      
+      {/* Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Total de Vendas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-blue-600">R$ {totalSales.toFixed(2)}</p>
+            <p className="text-sm text-gray-500">
+              {format(dateRange.start, "dd 'de' MMMM", { locale: ptBR })} - {format(dateRange.end, "dd 'de' MMMM", { locale: ptBR })}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Quantidade de Fichas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-green-600">{totalTickets}</p>
+            <p className="text-sm text-gray-500">Fichas vendidas no período</p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Lista de Pedidos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Receipt className="h-5 w-5 mr-2" />
+            Lista de Vendas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center items-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+          ) : ticketSales && ticketSales.length > 0 ? (
+            <div className="space-y-6">
+              {ticketSales.map((order) => (
+                <Card key={order.id} className="overflow-hidden">
+                  <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">Pedido #{order.id}</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {order.customer_name && (
+                        <p className="text-sm text-gray-700 mt-1">Cliente: {order.customer_name}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-blue-600">R$ {Number(order.total_amount).toFixed(2)}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        order.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                        order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {order.status === 'completed' ? 'Concluído' : 
+                         order.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <p className="font-medium mb-2">Itens do pedido</p>
+                    <div className="space-y-2">
+                      {order.items.map((item, index) => (
+                        <div key={index} className="flex justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.product_name}</p>
+                            <p className="text-sm text-gray-500">
+                              {item.quantity}x R$ {Number(item.product_price).toFixed(2)}
+                            </p>
+                          </div>
+                          <p className="font-medium">R$ {Number(item.subtotal).toFixed(2)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhuma ficha vendida no período selecionado.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Layout>
+  );
+};
+
+export default SoldTickets;

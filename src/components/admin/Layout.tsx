@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Package, Tag, BarChart, Settings, LogOut, Menu, X, Printer, ChevronDown, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Package, Tag, BarChart, Settings, LogOut, Menu, X, Printer, ChevronDown, ChevronLeft, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 interface LayoutProps {
@@ -43,6 +43,10 @@ export function Layout({
     name: "Categorias",
     path: "/admin/categories",
     icon: <Tag className="h-5 w-5" />
+  }, {
+    name: "Fichas Vendidas",
+    path: "/admin/fichas-vendidas",
+    icon: <Receipt className="h-5 w-5" />
   }, {
     name: "Relatórios",
     path: "/admin/reports",

@@ -23,6 +23,7 @@ import SettingsSicoob from "./pages/admin/settings/SettingsSicoob";
 import SettingsSicredi from "./pages/admin/settings/SettingsSicredi";
 import SettingsBancoBrasil from "./pages/admin/settings/SettingsBancoBrasil";
 import SettingsFiscal from "./pages/admin/settings/SettingsFiscal";
+import SoldTickets from "./pages/admin/SoldTickets";
 
 // Configurar o React Query com valores padrões melhores para evitar refetches excessivos
 const queryClient = new QueryClient({
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/admin/reports" element={<Reports />} />
             <Route path="/admin/printer-settings" element={<PrinterSettings />} />
             <Route path="/admin/configuracoes" element={<Configuracoes />} />
+            <Route path="/admin/fichas-vendidas" element={<SoldTickets />} />
             <Route path="/admin/settings/ai" element={<SettingsAI />} />
             <Route path="/admin/settings/stone" element={<SettingsStone />} />
             <Route path="/admin/settings/mercadopago" element={<SettingsMercadoPago />} />

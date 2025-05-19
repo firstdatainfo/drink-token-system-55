@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Printer, CreditCard, Database, Rocket, Loader2 } from "lucide-react";
+import { Printer, CreditCard, Database, Rocket, Loader2, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -58,13 +58,14 @@ const Admin = () => {
           });
         }
         
+        console.log("Dados de vendas carregados:", salesByDay);
         return salesByDay;
       } catch (error) {
         console.error("Erro ao buscar dados de vendas:", error);
         return fallbackSalesData;
       }
     },
-    staleTime: 15 * 60 * 1000, // 15 minutos
+    staleTime: 5 * 60 * 1000, // 5 minutos
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -138,6 +139,8 @@ const Admin = () => {
           }
         });
         
+        console.log("Estatísticas carregadas:", { totalSales, ordersToday, topProduct });
+        
         return {
           totalSales,
           ordersToday,
@@ -148,8 +151,8 @@ const Admin = () => {
         return fallbackStats;
       }
     },
-    staleTime: 15 * 60 * 1000, // 15 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: true, // Atualizar ao focar na janela
     retry: 1,
   });
 
@@ -331,18 +334,20 @@ const Admin = () => {
               Gerenciar Categorias
             </Button>
             <Button 
+              onClick={() => navigate("/admin/fichas-vendidas")}
+              className="text-xs sm:text-sm"
+              size="sm"
+              variant="action"
+            >
+              <Receipt className="h-4 w-4" />
+              Fichas Vendidas
+            </Button>
+            <Button 
               onClick={() => navigate("/admin/reports")}
               className="text-xs sm:text-sm"
               size="sm"
             >
               Relatórios
-            </Button>
-            <Button 
-              onClick={() => navigate("/admin/printer-settings")}
-              className="text-xs sm:text-sm"
-              size="sm"
-            >
-              Configurar Impressão
             </Button>
             <Button 
               onClick={() => navigate("/")}
