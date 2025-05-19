@@ -1,9 +1,11 @@
 
+// Import pdfMake with the correct structure
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { supabase } from "@/integrations/supabase/client";
 
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+// Properly initialize the virtual file system
+pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
 interface PdfGeneratorOptions {
   title: string;

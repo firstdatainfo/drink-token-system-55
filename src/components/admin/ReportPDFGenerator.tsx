@@ -59,9 +59,9 @@ export const ReportPDFGenerator: React.FC<ReportPDFGeneratorProps> = ({
         }
         
         // Convert DateRange to the expected format for generateSalesReport
-        const dateRangeForReport = dateRange ? {
-          start: dateRange.from!,
-          end: dateRange.to!
+        const dateRangeForReport = dateRange && dateRange.from && dateRange.to ? {
+          start: dateRange.from,
+          end: dateRange.to
         } : undefined;
         
         await generateSalesReport(filteredSales, dateRangeForReport);
