@@ -12,6 +12,7 @@ import Products from "./pages/admin/Products";
 import Categories from "./pages/admin/Categories";
 import Reports from "./pages/admin/Reports";
 import PrinterSettings from "./pages/admin/PrinterSettings";
+import Configuracoes from "./pages/admin/Configuracoes";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import SettingsAI from "./pages/admin/settings/SettingsAI";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/admin/categories" element={<Categories />} />
             <Route path="/admin/reports" element={<Reports />} />
             <Route path="/admin/printer-settings" element={<PrinterSettings />} />
+            <Route path="/admin/configuracoes" element={<Configuracoes />} />
             <Route path="/admin/settings/ai" element={<SettingsAI />} />
             <Route path="/admin/settings/stone" element={<SettingsStone />} />
             <Route path="/admin/settings/mercadopago" element={<SettingsMercadoPago />} />
