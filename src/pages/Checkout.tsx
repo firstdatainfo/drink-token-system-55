@@ -14,16 +14,21 @@ import {
   QrCode, 
   Receipt, 
   ShoppingBag, 
-  Check 
+  Check,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSalesData, PaymentMethod } from "@/hooks/useSalesData";
 
 const Checkout = () => {
   const { cart, getTotal, clearCart } = useCart();
   const navigate = useNavigate();
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [customerName, setCustomerName] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Utilizar o hook useSalesData para salvar o pedido
+  const { createOrderMutation } = useSalesData();
+  const isProcessing = createOrderMutation.isPending;
 
   const handlePaymentSubmit = async () => {
     if (!paymentMethod) {
@@ -31,15 +36,34 @@ const Checkout = () => {
       return;
     }
 
-    setIsProcessing(true);
-    
-    // Simulando processamento de pagamento
-    setTimeout(() => {
-      toast.success("Pagamento processado com sucesso!");
+    try {
+      // Criar o objeto do pedido com os dados necessários
+      const orderItems = cart.map(item => ({
+        product_id: item.product.id,
+        product_name: item.product.name,
+        product_price: item.product.price,
+        quantity: item.quantity,
+        subtotal: item.product.price * item.quantity
+      }));
+
+      const orderData = {
+        customer_name: customerName || undefined,
+        total_amount: getTotal(),
+        status: "completed" as const,
+        payment_method: paymentMethod,
+        items: orderItems
+      };
+
+      // Chamar a mutação para criar o pedido
+      await createOrderMutation.mutateAsync(orderData);
+      
+      // Limpar carrinho após sucesso
       clearCart();
       navigate("/");
-      setIsProcessing(false);
-    }, 2000);
+    } catch (error) {
+      console.error("Erro ao processar pedido:", error);
+      toast.error("Erro ao processar pedido. Tente novamente.");
+    }
   };
 
   if (cart.length === 0) {
@@ -175,7 +199,9 @@ const Checkout = () => {
                 disabled={isProcessing}
               >
                 {isProcessing ? (
-                  <>Processando...</>
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+                  </>
                 ) : (
                   <>
                     <Check className="mr-2 h-4 w-4" /> Confirmar Pagamento
