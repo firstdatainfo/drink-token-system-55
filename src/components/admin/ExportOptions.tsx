@@ -18,6 +18,11 @@ export function ExportOptions({ exportData, filename }: ExportOptionsProps) {
   // Function to export data as CSV (for Excel)
   const exportToExcel = () => {
     try {
+      if (!exportData || exportData.length === 0) {
+        toast.error("Não há dados para exportar");
+        return;
+      }
+      
       // Convert data to CSV format
       const headers = Object.keys(exportData[0]).join(',');
       const rows = exportData.map(item => 
@@ -73,6 +78,11 @@ export function ExportOptions({ exportData, filename }: ExportOptionsProps) {
   // Function to export as text
   const exportAsText = () => {
     try {
+      if (!exportData || exportData.length === 0) {
+        toast.error("Não há dados para exportar");
+        return;
+      }
+      
       const text = JSON.stringify(exportData, null, 2);
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
       const url = URL.createObjectURL(blob);

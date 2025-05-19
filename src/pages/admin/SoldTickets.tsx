@@ -1,11 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Loader2, Calendar } from "lucide-react";
+import { Receipt, Loader2, Calendar, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,13 +18,15 @@ const SoldTickets = () => {
   });
 
   // Consulta para obter os pedidos e itens dos pedidos
-  const { data: ticketSales, isLoading } = useQuery({
+  const { data: ticketSales, isLoading, refetch } = useQuery({
     queryKey: ['sold-tickets', dateRange],
     queryFn: async () => {
       try {
         // Converter datas para formato ISO string para a query
         const startDate = startOfDay(dateRange.start).toISOString();
         const endDate = endOfDay(dateRange.end).toISOString();
+        
+        console.log(`Buscando pedidos de ${startDate} até ${endDate}`);
         
         // Buscar os pedidos entre as datas
         const { data: orders, error: ordersError } = await supabase
@@ -34,16 +36,24 @@ const SoldTickets = () => {
           .lte('created_at', endDate)
           .order('created_at', { ascending: false });
           
-        if (ordersError) throw ordersError;
+        if (ordersError) {
+          console.error("Erro ao buscar pedidos:", ordersError);
+          throw ordersError;
+        }
+        
+        console.log(`Encontrados ${orders?.length || 0} pedidos`);
         
         // Para cada pedido, buscar seus itens
-        const ordersWithItems = await Promise.all(orders.map(async (order) => {
+        const ordersWithItems = await Promise.all((orders || []).map(async (order) => {
           const { data: items, error: itemsError } = await supabase
             .from('order_items')
             .select('product_name, quantity, product_price, subtotal')
             .eq('order_id', order.id);
             
-          if (itemsError) throw itemsError;
+          if (itemsError) {
+            console.error(`Erro ao buscar itens do pedido ${order.id}:`, itemsError);
+            throw itemsError;
+          }
           
           return {
             ...order,
@@ -57,7 +67,9 @@ const SoldTickets = () => {
         toast.error("Erro ao carregar as fichas vendidas");
         return [];
       }
-    }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0 // Sempre buscar dados novos ao montar o componente
   });
   
   // Preparar dados para exportação
@@ -84,6 +96,17 @@ const SoldTickets = () => {
   const totalTickets = ticketSales?.reduce((sum, order) => 
     sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0), 0) || 0;
 
+  // Função para recarregar dados manualmente
+  const handleRefresh = () => {
+    refetch();
+    toast.success("Dados atualizados");
+  };
+
+  // Buscar dados ao montar o componente
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
   return (
     <Layout>
       <div className="mb-6 flex justify-between items-center">
@@ -92,10 +115,21 @@ const SoldTickets = () => {
           <p className="text-gray-600 text-sm">Visualize todas as fichas vendidas e seus detalhes</p>
         </div>
         
-        <ExportOptions 
-          exportData={exportData}
-          filename="fichas_vendidas"
-        />
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh}
+            className="mr-2"
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" /> Atualizar
+          </Button>
+          
+          <ExportOptions 
+            exportData={exportData}
+            filename="fichas_vendidas"
+          />
+        </div>
       </div>
       
       {/* Filtros de Data */}
