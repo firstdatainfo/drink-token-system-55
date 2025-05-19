@@ -179,24 +179,34 @@ const Products = () => {
     }
     
     const priceString = formData.price.trim();
-    const priceAsNumber = parseFloat(priceString.replace(',', '.')) || 0;
 
-    if (priceAsNumber <= 0) {
-      toast.error("O preço deve ser maior que zero");
+    // Garante que o preço não está vazio
+    if (priceString === "") {
+      toast.error("O preço é obrigatório.");
       return;
     }
     
-    // Validação adicional para o formato do preço (opcional, mas recomendado)
-    if (!/^\d+(,\d{1,2})?$/.test(priceString.replace('.',',')) && priceString !== "" && !/^\d+$/.test(priceString)) {
-      if (priceString !== "" && !/^\d+(,\d{1,2})?$/.test(priceString) && !/^\d+$/.test(priceString.replace(',','.'))) {
-         toast.error("Formato de preço inválido. Use, por exemplo, 12,90 ou 12.");
-         return;
-      }
+    // Tenta converter a string do preço (com vírgula) para um número (com ponto)
+    const priceAsNumber = parseFloat(priceString.replace(',', '.'));
+
+    // Verifica se a conversão falhou (NaN) ou se o número não é positivo
+    if (isNaN(priceAsNumber) || priceAsNumber <= 0) {
+      toast.error("Preço inválido. Deve ser um número positivo e no formato correto (ex: 12,90 ou 12).");
+      return;
+    }
+    
+    // Verifica se o número resultante tem mais de duas casas decimais
+    // Convertendo o número de volta para string para uma checagem confiável das casas decimais
+    const normalizedPriceString = priceAsNumber.toString(); 
+    const parts = normalizedPriceString.split('.');
+    if (parts.length > 1 && parts[1].length > 2) {
+      toast.error("O preço não pode ter mais que duas casas decimais.");
+      return;
     }
     
     const productData = {
       name: formData.name,
-      price: priceAsNumber, // Usa o número convertido
+      price: priceAsNumber, // Usa o número convertido e validado
       category_id: formData.category_id,
       image: formData.image,
       description: formData.description,
