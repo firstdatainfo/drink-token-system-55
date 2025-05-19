@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export type OrderStatus = "pending" | "completed" | "cancelled";
+export type PaymentMethod = "cash" | "credit" | "debit" | "pix" | "other";
 
 export interface OrderItem {
   product_id: number;
@@ -18,6 +19,7 @@ export interface Order {
   customer_name?: string;
   total_amount: number;
   status: OrderStatus;
+  payment_method?: PaymentMethod;
   items: OrderItem[];
 }
 
@@ -38,7 +40,8 @@ export function useSalesData() {
         .insert({
           customer_name: orderData.customer_name,
           total_amount: orderData.total_amount,
-          status: orderData.status
+          status: orderData.status,
+          payment_method: orderData.payment_method || "cash" // Definir dinheiro como padrão se não especificado
         })
         .select("id")
         .single();
@@ -160,12 +163,23 @@ export function useSalesData() {
       queryClient.invalidateQueries({ queryKey: ['sales-data'] });
     }
   });
+
+  // Função para forçar atualização de dados
+  const refreshData = () => {
+    console.log("Forçando atualização de todos os dados relacionados a vendas");
+    queryClient.invalidateQueries({ queryKey: ['sold-tickets'] });
+    queryClient.invalidateQueries({ queryKey: ['sales-data'] });
+    queryClient.invalidateQueries({ queryKey: ['category-data'] });
+    queryClient.invalidateQueries({ queryKey: ['product-data'] });
+    toast.success("Dados atualizados");
+  };
   
   return {
     loading,
     createOrder,
     createOrderMutation,
     updateOrderStatus,
-    updateOrderStatusMutation
+    updateOrderStatusMutation,
+    refreshData
   };
 }

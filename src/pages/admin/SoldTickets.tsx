@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Loader2, Calendar, RefreshCcw, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Receipt, Loader2, Calendar, RefreshCcw, CheckCircle, XCircle, AlertCircle, DollarSign, CreditCard, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useSalesData, OrderStatus } from "@/hooks/useSalesData";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const SoldTickets = () => {
   const [dateRange, setDateRange] = useState({
@@ -24,7 +26,8 @@ const SoldTickets = () => {
     end: new Date()
   });
 
-  const { updateOrderStatusMutation } = useSalesData();
+  const { updateOrderStatusMutation, refreshData } = useSalesData();
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   // Consulta para obter os pedidos e itens dos pedidos
   const { data: ticketSales, isLoading, refetch } = useQuery({
@@ -40,7 +43,7 @@ const SoldTickets = () => {
         // Buscar os pedidos entre as datas
         const { data: orders, error: ordersError } = await supabase
           .from('orders')
-          .select('id, created_at, total_amount, customer_name, status')
+          .select('id, created_at, total_amount, customer_name, status, payment_method')
           .gte('created_at', startDate)
           .lte('created_at', endDate)
           .order('created_at', { ascending: false });
@@ -70,6 +73,7 @@ const SoldTickets = () => {
           };
         }));
         
+        console.log("Dados dos pedidos com itens:", ordersWithItems);
         return ordersWithItems;
       } catch (error) {
         console.error("Erro ao buscar fichas vendidas:", error);
@@ -81,13 +85,22 @@ const SoldTickets = () => {
     staleTime: 0 // Sempre buscar dados novos ao montar o componente
   });
   
+  // Filtrar por método de pagamento
+  const filteredSales = activeTab === "all" 
+    ? ticketSales 
+    : ticketSales?.filter(sale => sale.payment_method === activeTab);
+  
   // Preparar dados para exportação
-  const exportData = ticketSales?.map(ticket => ({
+  const exportData = filteredSales?.map(ticket => ({
     id: ticket.id,
     data: format(new Date(ticket.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
     cliente: ticket.customer_name || "Não informado",
     status: ticket.status === "completed" ? "Concluído" : 
             ticket.status === "cancelled" ? "Cancelado" : "Pendente",
+    pagamento: ticket.payment_method === "cash" ? "Dinheiro" : 
+              ticket.payment_method === "credit" ? "Crédito" : 
+              ticket.payment_method === "debit" ? "Débito" : 
+              ticket.payment_method === "pix" ? "PIX" : "Outro",
     valor: Number(ticket.total_amount).toFixed(2),
     itens: ticket.items.length
   })) || [];
@@ -101,16 +114,18 @@ const SoldTickets = () => {
   };
   
   // Calcular totais
-  const totalSales = ticketSales?.reduce((sum, order) => 
+  const totalSales = filteredSales?.reduce((sum, order) => 
     order.status === 'completed' ? sum + Number(order.total_amount) : sum, 0) || 0;
   
-  const totalTickets = ticketSales?.reduce((sum, order) => 
+  const totalTickets = filteredSales?.reduce((sum, order) => 
     order.status === 'completed' ? 
     sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0) : sum, 0) || 0;
 
   // Função para recarregar dados manualmente
   const handleRefresh = () => {
+    console.log("Recarregando dados manualmente...");
     refetch();
+    refreshData();
     toast.success("Dados atualizados");
   };
   
@@ -126,8 +141,20 @@ const SoldTickets = () => {
     );
   };
 
+  // Obter ícone para método de pagamento
+  const getPaymentIcon = (method: string | undefined) => {
+    switch(method) {
+      case 'cash': return <DollarSign className="h-4 w-4 mr-1 text-green-600" />;
+      case 'credit': return <CreditCard className="h-4 w-4 mr-1 text-blue-600" />;
+      case 'debit': return <CreditCard className="h-4 w-4 mr-1 text-purple-600" />;
+      case 'pix': return <Smartphone className="h-4 w-4 mr-1 text-yellow-600" />;
+      default: return <Receipt className="h-4 w-4 mr-1 text-gray-600" />;
+    }
+  };
+
   // Buscar dados ao montar o componente
   useEffect(() => {
+    console.log("Componente SoldTickets montado, buscando dados iniciais...");
     refetch();
   }, [refetch]);
 
@@ -223,6 +250,30 @@ const SoldTickets = () => {
         </Card>
       </div>
       
+      {/* Filtros por método de pagamento */}
+      <Tabs 
+        defaultValue="all" 
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-6"
+      >
+        <TabsList>
+          <TabsTrigger value="all">Todos</TabsTrigger>
+          <TabsTrigger value="cash" className="flex items-center">
+            <DollarSign className="h-4 w-4 mr-1" /> Dinheiro
+          </TabsTrigger>
+          <TabsTrigger value="credit" className="flex items-center">
+            <CreditCard className="h-4 w-4 mr-1" /> Crédito
+          </TabsTrigger>
+          <TabsTrigger value="debit" className="flex items-center">
+            <CreditCard className="h-4 w-4 mr-1" /> Débito
+          </TabsTrigger>
+          <TabsTrigger value="pix" className="flex items-center">
+            <Smartphone className="h-4 w-4 mr-1" /> PIX
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+      
       {/* Lista de Pedidos */}
       <Card>
         <CardHeader>
@@ -236,9 +287,9 @@ const SoldTickets = () => {
             <div className="flex justify-center items-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>
-          ) : ticketSales && ticketSales.length > 0 ? (
+          ) : filteredSales && filteredSales.length > 0 ? (
             <div className="space-y-6">
-              {ticketSales.map((order) => (
+              {filteredSales.map((order) => (
                 <Card key={order.id} className="overflow-hidden">
                   <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
                     <div>
@@ -249,6 +300,15 @@ const SoldTickets = () => {
                       {order.customer_name && (
                         <p className="text-sm text-gray-700 mt-1">Cliente: {order.customer_name}</p>
                       )}
+                      <div className="flex items-center mt-1">
+                        {getPaymentIcon(order.payment_method)}
+                        <span className="text-sm">
+                          {order.payment_method === 'cash' ? 'Dinheiro' : 
+                           order.payment_method === 'credit' ? 'Cartão de Crédito' :
+                           order.payment_method === 'debit' ? 'Cartão de Débito' :
+                           order.payment_method === 'pix' ? 'PIX' : 'Outro'}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-blue-600">R$ {Number(order.total_amount).toFixed(2)}</p>
