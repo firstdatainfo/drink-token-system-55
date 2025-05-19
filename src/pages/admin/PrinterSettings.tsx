@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +48,8 @@ const PrinterSettings = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
+  const [companySettingsId, setCompanySettingsId] = useState<string | null>(null);
+  const [printerSettingsId, setPrinterSettingsId] = useState<string | null>(null);
   const navigate = useNavigate();
   const form = useForm<PrinterSettingsFormValues>({
     defaultValues: {
@@ -106,6 +109,7 @@ const PrinterSettings = () => {
             validationCode: data.validation_code || ""
           });
           setSelectedModel(data.printer_model as PrinterModel);
+          setPrinterSettingsId(data.id);
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -129,6 +133,7 @@ const PrinterSettings = () => {
             footerMessage: data.footer_message || "Obrigado pela preferência!"
           });
           setLogoUrl(data.logo_url || null);
+          setCompanySettingsId(data.id);
         }
       } catch (error) {
         console.error('Erro ao carregar dados da empresa:', error);
@@ -142,8 +147,7 @@ const PrinterSettings = () => {
       const {
         error
       } = await supabase.from('printer_settings').upsert({
-        id: 'default',
-        // Usando um ID fixo para facilitar a atualização
+        id: printerSettingsId || undefined,
         printer_name: data.printerName,
         printer_model: data.printerModel,
         printer_ip: data.printerIP,
@@ -171,8 +175,7 @@ const PrinterSettings = () => {
       const {
         error
       } = await supabase.from('company_settings').upsert({
-        id: 'default',
-        // Usando um ID fixo para facilitar a atualização
+        id: companySettingsId || undefined,
         name: data.name,
         address: data.address,
         phone: data.phone,
@@ -243,10 +246,10 @@ const PrinterSettings = () => {
       if (error) throw error;
 
       // Atualizar o registro da empresa para remover a referência ao logo
-      await supabase.from('company_settings').upsert({
-        id: 'default',
+      await supabase.from('company_settings').update({
         logo_url: null
-      });
+      }).eq('id', companySettingsId || '');
+      
       setLogoUrl(null);
       toast.success("Logo removido com sucesso!");
     } catch (error) {
