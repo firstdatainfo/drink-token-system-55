@@ -3,11 +3,12 @@ import { Layout } from "@/components/admin/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, ImageIcon, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ImageIcon, Image, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Product, Category } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,12 +20,14 @@ const Products = () => {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    price: "", // Alterado para string
+    price: "",
     category_id: 0,
     image: "",
     description: ""
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -140,11 +143,12 @@ const Products = () => {
   });
 
   const handleAddEdit = (product: Product | null = null) => {
+    setSelectedFile(null);
     if (product) {
       setCurrentProduct(product);
       setFormData({
         name: product.name,
-        price: product.price.toFixed(2).replace('.', ','), // Formata para string com vírgula
+        price: product.price.toFixed(2).replace('.', ','),
         category_id: product.category_id || 0,
         image: product.image || "",
         description: product.description || ""
@@ -154,7 +158,7 @@ const Products = () => {
       setCurrentProduct(null);
       setFormData({
         name: "",
-        price: "", // Inicializa como string vazia
+        price: "",
         category_id: categories.length > 0 ? categories[0].id : 0,
         image: "",
         description: ""
@@ -170,7 +174,75 @@ const Products = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Tipo de arquivo inválido. Apenas JPG, PNG, GIF, WebP são permitidos.");
+        setSelectedFile(null);
+        setImagePreview(formData.image || null);
+        e.target.value = "";
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Arquivo muito grande. O tamanho máximo é 5MB.");
+        setSelectedFile(null);
+        setImagePreview(formData.image || null);
+        e.target.value = "";
+        return;
+      }
+      setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      setFormData({ ...formData, image: "" });
+    } else {
+      setSelectedFile(null);
+      setImagePreview(currentProduct?.image || null);
+    }
+  };
+
+  const handleImageUploadAndFormSubmit = async (productDataSansImage: Omit<Product, 'id' | 'category' | 'image'>) => {
+    setIsUploading(true);
+    let imageUrl = currentProduct?.image || "";
+
+    if (selectedFile) {
+      const fileName = `${Date.now()}_${selectedFile.name.replace(/\s+/g, '_')}`;
+      const filePath = `${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('product_images')
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        toast.error(`Erro no upload da imagem: ${uploadError.message}`);
+        console.error("Upload error:", uploadError);
+        setIsUploading(false);
+        return;
+      }
+      
+      const { data: publicUrlData } = supabase.storage
+        .from('product_images')
+        .getPublicUrl(uploadData.path);
+      
+      imageUrl = publicUrlData.publicUrl;
+    } else if (formData.image) {
+      imageUrl = formData.image;
+    }
+
+    const finalProductData = { ...productDataSansImage, image: imageUrl };
+
+    if (currentProduct) {
+      updateProductMutation.mutate({ id: currentProduct.id, ...finalProductData });
+    } else {
+      addProductMutation.mutate(finalProductData);
+    }
+    setIsUploading(false);
+  };
+
+  const newHandleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
@@ -179,24 +251,15 @@ const Products = () => {
     }
     
     const priceString = formData.price.trim();
-
-    // Garante que o preço não está vazio
     if (priceString === "") {
       toast.error("O preço é obrigatório.");
       return;
     }
-    
-    // Tenta converter a string do preço (com vírgula) para um número (com ponto)
     const priceAsNumber = parseFloat(priceString.replace(',', '.'));
-
-    // Verifica se a conversão falhou (NaN) ou se o número não é positivo
     if (isNaN(priceAsNumber) || priceAsNumber <= 0) {
       toast.error("Preço inválido. Deve ser um número positivo e no formato correto (ex: 12,90 ou 12).");
       return;
     }
-    
-    // Verifica se o número resultante tem mais de duas casas decimais
-    // Convertendo o número de volta para string para uma checagem confiável das casas decimais
     const normalizedPriceString = priceAsNumber.toString(); 
     const parts = normalizedPriceString.split('.');
     if (parts.length > 1 && parts[1].length > 2) {
@@ -204,64 +267,34 @@ const Products = () => {
       return;
     }
     
-    const productData = {
+    const productDataSansImage = {
       name: formData.name,
-      price: priceAsNumber, // Usa o número convertido e validado
+      price: priceAsNumber,
       category_id: formData.category_id,
-      image: formData.image,
       description: formData.description,
     };
 
-    if (currentProduct) {
-      updateProductMutation.mutate({ id: currentProduct.id, ...productData });
-    } else {
-      addProductMutation.mutate(productData);
-    }
+    handleImageUploadAndFormSubmit(productDataSansImage);
   };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
-    // Remove caracteres não numéricos, exceto vírgula (ponto será convertido)
     value = value.replace(/[^\d,.]/g, "");
-    
-    // Substitui ponto por vírgula para consistência na máscara
     value = value.replace(/\./g, ",");
-
-    // Garante que haja apenas uma vírgula
-    const firstCommaIndex = value.indexOf(',');
-    if (firstCommaIndex !== -1) {
-      // Mantém tudo até a primeira vírgula, e o restante sem vírgulas
-      value = value.substring(0, firstCommaIndex + 1) + value.substring(firstCommaIndex + 1).replace(/,/g, "");
+    if (value.indexOf(',') !== -1) {
+      value = value.substring(0, value.indexOf(',') + 1) + value.substring(value.indexOf(',') + 1).replace(/,/g, "");
     }
-
-    // Limita a duas casas decimais
-    const parts = value.split(',');
-    if (parts.length > 1) {
-      if (parts[1].length > 2) {
-        parts[1] = parts[1].substring(0, 2);
+    if (value.split(',').length > 1) {
+      if (value.split(',')[1].length > 2) {
+        value = value.substring(0, value.indexOf(',') + 3);
       }
-      value = parts.join(',');
     }
-    
     setFormData({ ...formData, price: value });
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const imageUrl = e.target.value;
-    setFormData({...formData, image: imageUrl});
-    
-    // Update image preview
-    if (imageUrl.trim()) {
-      setImagePreview(imageUrl);
-    } else {
-      setImagePreview(null);
-    }
   };
 
   const isImageValid = (url: string | null): boolean => {
     if (!url) return false;
-    // Simple check if the URL might be a valid image URL
     return url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)(\?.*)?$/i) !== null || 
            url.startsWith('http') || 
            url.startsWith('data:image');
@@ -355,14 +388,14 @@ const Products = () => {
       </Card>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {currentProduct ? "Editar Produto" : "Adicionar Produto"}
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          <form onSubmit={newHandleSubmit} className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome do Produto</Label>
               <Input 
@@ -373,55 +406,65 @@ const Products = () => {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="price">Preço (R$)</Label>
-              <Input 
-                id="price" 
-                inputMode="decimal" // Mantém para teclado numérico em mobile
-                // type="text" é o padrão, o que é bom para controlar o valor como string
-                value={formData.price} // Direto da string formData.price
-                onChange={handlePriceChange}
-                placeholder="0,00"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price">Preço (R$)</Label>
+                <Input 
+                  id="price" 
+                  inputMode="decimal"
+                  value={formData.price}
+                  onChange={handlePriceChange}
+                  placeholder="0,00"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Select 
+                  value={formData.category_id?.toString() || (categories.length > 0 ? categories[0].id.toString() : "")} 
+                  onValueChange={(value) => setFormData({...formData, category_id: parseInt(value)})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id.toString()}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Select 
-                value={formData.category_id.toString()} 
-                onValueChange={(value) => setFormData({...formData, category_id: parseInt(value)})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição (opcional)</Label>
-              <Input 
-                id="description" 
-                value={formData.description} 
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="image">URL da Imagem (opcional)</Label>
-              <Input 
-                id="image" 
-                value={formData.image} 
-                onChange={handleImageChange}
-                placeholder="https://exemplo.com/imagem.jpg"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição (opcional)</Label>
+                <Textarea 
+                  id="description" 
+                  value={formData.description} 
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  rows={3}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="image-upload">Imagem do Produto</Label>
+                <Input 
+                  id="image-upload" 
+                  type="file"
+                  accept="image/jpeg, image/png, image/gif, image/webp"
+                  onChange={handleFileSelected}
+                  className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-pdv-blue file:text-white hover:file:bg-pdv-blue/90"
+                />
+                {formData.image && !selectedFile && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    URL atual: <a href={formData.image} target="_blank" rel="noopener noreferrer" className="text-pdv-blue hover:underline truncate block max-w-xs">{formData.image}</a>
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Image Preview */}
@@ -434,20 +477,22 @@ const Products = () => {
                       src={imagePreview} 
                       alt="Prévia"
                       className="object-contain w-full h-full"
-                      onError={(e) => {
-                        toast.error("Não foi possível carregar esta imagem. Verifique a URL.");
+                      onError={() => {
+                        toast.info("Não foi possível carregar a prévia da imagem. Tente outra imagem ou URL.");
                         setImagePreview(null);
+                        setSelectedFile(null);
+                        const input = document.getElementById('image-upload') as HTMLInputElement;
+                        if (input) input.value = "";
                       }}
                     />
                   </AspectRatio>
                 </div>
               </div>
             ) : (
-              <div className="mt-4 border rounded-md p-2 bg-gray-50 h-28 flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <Image className="mx-auto h-8 w-8 mb-2 text-gray-400" />
-                  <p className="text-sm">Sem prévia de imagem</p>
-                </div>
+              <div className="mt-4 border rounded-md p-2 bg-gray-50 h-36 flex flex-col items-center justify-center">
+                <UploadCloud className="mx-auto h-10 w-10 mb-2 text-gray-400" />
+                <p className="text-sm text-gray-500">Sem prévia de imagem</p>
+                <p className="text-xs text-gray-400 mt-1">Tamanho máx. 5MB. JPG, PNG, GIF, WebP.</p>
               </div>
             )}
             
@@ -456,15 +501,15 @@ const Products = () => {
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsDialogOpen(false)}
-                disabled={addProductMutation.isPending || updateProductMutation.isPending}
+                disabled={isUploading || addProductMutation.isPending || updateProductMutation.isPending}
               >
                 Cancelar
               </Button>
               <Button 
                 type="submit"
-                disabled={addProductMutation.isPending || updateProductMutation.isPending}
+                disabled={isUploading || addProductMutation.isPending || updateProductMutation.isPending}
               >
-                {(addProductMutation.isPending || updateProductMutation.isPending) ? (
+                {(isUploading || addProductMutation.isPending || updateProductMutation.isPending) ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
                 ) : (
                   currentProduct ? "Atualizar" : "Adicionar"
