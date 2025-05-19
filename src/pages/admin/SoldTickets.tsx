@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
@@ -9,6 +9,7 @@ import { Receipt, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ExportOptions } from "@/components/admin/ExportOptions";
 
 const SoldTickets = () => {
   const [dateRange, setDateRange] = useState({
@@ -59,6 +60,17 @@ const SoldTickets = () => {
     }
   });
   
+  // Preparar dados para exportação
+  const exportData = ticketSales?.map(ticket => ({
+    id: ticket.id,
+    data: format(new Date(ticket.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+    cliente: ticket.customer_name || "Não informado",
+    status: ticket.status === "completed" ? "Concluído" : 
+            ticket.status === "cancelled" ? "Cancelado" : "Pendente",
+    valor: Number(ticket.total_amount).toFixed(2),
+    itens: ticket.items.length
+  })) || [];
+  
   // Função para filtrar últimos dias
   const filterLastDays = (days: number) => {
     setDateRange({
@@ -74,9 +86,16 @@ const SoldTickets = () => {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Fichas Vendidas</h1>
-        <p className="text-gray-600 text-sm">Visualize todas as fichas vendidas e seus detalhes</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Fichas Vendidas</h1>
+          <p className="text-gray-600 text-sm">Visualize todas as fichas vendidas e seus detalhes</p>
+        </div>
+        
+        <ExportOptions 
+          exportData={exportData}
+          filename="fichas_vendidas"
+        />
       </div>
       
       {/* Filtros de Data */}
