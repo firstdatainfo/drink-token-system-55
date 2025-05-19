@@ -168,6 +168,7 @@ export const ReportPDFGenerator: React.FC<ReportPDFGeneratorProps> = ({
                       }
                     </li>
                     <li>Campos incluídos: ID, Data, Cliente, Valor Total, Método de Pagamento</li>
+                    <li>Total de vendas disponíveis: {salesData.length}</li>
                   </>
                 )}
               </ul>

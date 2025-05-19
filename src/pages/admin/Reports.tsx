@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Filter, Loader2 } from "lucide-react";
+import { Filter, Loader2, FileDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ExportOptions } from "@/components/admin/ExportOptions";
+import { ReportPDFGenerator } from "@/components/admin/ReportPDFGenerator";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -50,6 +51,7 @@ const Reports = () => {
     queryKey: ['sales-data', startDate, endDate],
     queryFn: async () => {
       try {
+        console.log("Fetching sales data from", startDate, "to", endDate);
         const startDateIso = startOfDay(startDate).toISOString();
         const endDateIso = endOfDay(endDate).toISOString();
         
@@ -60,7 +62,12 @@ const Reports = () => {
           .lte('created_at', endDateIso)
           .order('created_at');
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching orders:", error);
+          throw error;
+        }
+        
+        console.log("Orders fetched:", orders ? orders.length : 0);
         
         // Group by date for chart visualization
         const salesByDate = orders.reduce((acc: Record<string, number>, order) => {
@@ -74,6 +81,7 @@ const Reports = () => {
           vendas
         }));
         
+        console.log("Formatted sales data:", formattedData);
         return formattedData;
       } catch (error) {
         console.error("Erro ao buscar dados de vendas:", error);
@@ -81,7 +89,62 @@ const Reports = () => {
         return [];
       }
     },
-    enabled: reportType === "sales"
+  });
+
+  // Query to fetch raw sales data for PDF reports
+  const { data: rawSalesData, isLoading: rawSalesLoading } = useQuery({
+    queryKey: ['raw-sales-data', startDate, endDate],
+    queryFn: async () => {
+      try {
+        const startDateIso = startOfDay(startDate).toISOString();
+        const endDateIso = endOfDay(endDate).toISOString();
+        
+        const { data: orders, error } = await supabase
+          .from('orders')
+          .select(`
+            id, 
+            created_at, 
+            total_amount, 
+            status, 
+            customer_name,
+            payment_method,
+            order_items(*)
+          `)
+          .gte('created_at', startDateIso)
+          .lte('created_at', endDateIso)
+          .order('created_at');
+          
+        if (error) throw error;
+        
+        return orders || [];
+      } catch (error) {
+        console.error("Erro ao buscar dados brutos de vendas:", error);
+        return [];
+      }
+    }
+  });
+
+  // Query to fetch products data for PDF reports
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['products-report-data'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            *,
+            categories(name)
+          `)
+          .order('name');
+          
+        if (error) throw error;
+        
+        return data || [];
+      } catch (error) {
+        console.error("Erro ao buscar dados de produtos:", error);
+        return [];
+      }
+    }
   });
 
   // Query to fetch category data from Supabase
@@ -89,6 +152,7 @@ const Reports = () => {
     queryKey: ['category-data', startDate, endDate],
     queryFn: async () => {
       try {
+        console.log("Fetching category data from", startDate, "to", endDate);
         const startDateIso = startOfDay(startDate).toISOString();
         const endDateIso = endOfDay(endDate).toISOString();
         
@@ -111,7 +175,12 @@ const Reports = () => {
           .lte('created_at', endDateIso)
           .eq('status', 'completed');
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching category data:", error);
+          throw error;
+        }
+        
+        console.log("Category orders fetched:", data ? data.length : 0);
         
         // Process data to get sales by category
         const categorySales = data.flatMap(order => 
@@ -129,6 +198,8 @@ const Reports = () => {
           value
         }));
         
+        console.log("Formatted category data:", formattedData);
+        
         return formattedData.length > 0 ? formattedData : [
           { name: 'Sem dados', value: 1 }
         ];
@@ -138,14 +209,14 @@ const Reports = () => {
         return [{ name: 'Sem dados', value: 1 }];
       }
     },
-    enabled: reportType === "categories"
   });
 
   // Query to fetch product sales data from Supabase
-  const { data: productData, isLoading: productsLoading } = useQuery({
+  const { data: productData, isLoading: productsDataLoading } = useQuery({
     queryKey: ['product-data', startDate, endDate],
     queryFn: async () => {
       try {
+        console.log("Fetching product data from", startDate, "to", endDate);
         const startDateIso = startOfDay(startDate).toISOString();
         const endDateIso = endOfDay(endDate).toISOString();
         
@@ -164,7 +235,12 @@ const Reports = () => {
           .lte('orders.created_at', endDateIso)
           .eq('orders.status', 'completed');
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching product data:", error);
+          throw error;
+        }
+        
+        console.log("Product orders fetched:", data ? data.length : 0);
         
         // Aggregate by product
         const productSales = data.reduce((acc: Record<string, any>, item) => {
@@ -191,6 +267,7 @@ const Reports = () => {
             ...item
           }));
           
+        console.log("Formatted product data:", formattedData);
         return formattedData;
       } catch (error) {
         console.error("Erro ao buscar dados por produto:", error);
@@ -198,7 +275,6 @@ const Reports = () => {
         return [];
       }
     },
-    enabled: reportType === "products"
   });
 
   // Calculate summary values
@@ -221,7 +297,7 @@ const Reports = () => {
   };
 
   // Determine if loading
-  const isLoading = salesLoading || categoriesLoading || productsLoading;
+  const isLoading = salesLoading || categoriesLoading || productsDataLoading;
 
   return (
     <Layout>
@@ -389,21 +465,27 @@ const Reports = () => {
                 <ExportOptions exportData={salesData} filename="vendas_diarias" />
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={salesData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`R$ ${value}`, 'Vendas']} />
-                      <Legend />
-                      <Line type="monotone" dataKey="vendas" stroke="#0EA5E9" activeDot={{ r: 8 }} name="Vendas (R$)" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                {salesData.length > 0 ? (
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={salesData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`R$ ${value}`, 'Vendas']} />
+                        <Legend />
+                        <Line type="monotone" dataKey="vendas" stroke="#0EA5E9" activeDot={{ r: 8 }} name="Vendas (R$)" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-80 flex items-center justify-center">
+                    <p className="text-gray-500">Nenhuma venda encontrada no período selecionado.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -415,28 +497,34 @@ const Reports = () => {
                 <ExportOptions exportData={categoryData} filename="vendas_por_categoria" />
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, 'Valor']} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                {categoryData.length > 0 && categoryData[0].name !== 'Sem dados' ? (
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, 'Valor']} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-80 flex items-center justify-center">
+                    <p className="text-gray-500">Nenhuma venda por categoria encontrada no período.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -499,6 +587,13 @@ const Reports = () => {
           </div>
         </CardContent>
       </Card>
+      
+      <div className="mt-6">
+        <ReportPDFGenerator 
+          productsData={productsData} 
+          salesData={rawSalesData}
+        />
+      </div>
     </Layout>
   );
 };
