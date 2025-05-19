@@ -8,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Printer, CreditCard, Database, Rocket, Loader2, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 
 // Dados estáticos como fallback
 const fallbackSalesData = [
@@ -28,6 +30,10 @@ const fallbackStats = {
 
 const Admin = () => {
   const navigate = useNavigate();
+  const [openStoneDialog, setOpenStoneDialog] = useState(false);
+  const [openSupabaseDialog, setOpenSupabaseDialog] = useState(false);
+  const [openVercelDialog, setOpenVercelDialog] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>("58mm");
   
   // Buscar dados de vendas da semana do Supabase com configuração otimizada e fallback
   const { data: salesData = fallbackSalesData, isLoading: isLoadingSales } = useQuery({
@@ -156,6 +162,23 @@ const Admin = () => {
     retry: 1,
   });
 
+  const handleConnectStone = () => {
+    setOpenStoneDialog(true);
+  };
+  
+  const handleConnectSupabase = () => {
+    setOpenSupabaseDialog(true);
+  };
+  
+  const handleConnectVercel = () => {
+    setOpenVercelDialog(true);
+  };
+  
+  const handleModelSelect = (model: string) => {
+    setSelectedModel(model);
+    toast.success(`Modelo de impressora selecionado: ${model}`);
+  };
+
   return (
     <Layout>
       <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Dashboard</h1>
@@ -262,9 +285,30 @@ const Admin = () => {
               <CardContent>
                 <p className="mb-2 text-xs sm:text-sm text-gray-500">Modelos de Impressora:</p>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Button variant="outline" size="sm" className="text-xs">48mm</Button>
-                  <Button variant="outline" size="sm" className="text-xs">58mm</Button>
-                  <Button variant="outline" size="sm" className="text-xs">80mm</Button>
+                  <Button 
+                    variant={selectedModel === "48mm" ? "default" : "outline"} 
+                    size="sm" 
+                    className="text-xs"
+                    onClick={() => handleModelSelect("48mm")}
+                  >
+                    48mm
+                  </Button>
+                  <Button 
+                    variant={selectedModel === "58mm" ? "default" : "outline"} 
+                    size="sm" 
+                    className="text-xs"
+                    onClick={() => handleModelSelect("58mm")}
+                  >
+                    58mm
+                  </Button>
+                  <Button 
+                    variant={selectedModel === "80mm" ? "default" : "outline"} 
+                    size="sm" 
+                    className="text-xs"
+                    onClick={() => handleModelSelect("80mm")}
+                  >
+                    80mm
+                  </Button>
                 </div>
                 <Button 
                   variant="secondary" 
@@ -288,7 +332,14 @@ const Admin = () => {
                       <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-pdv-blue" />
                       <span className="text-xs sm:text-sm">Stone Pagamentos</span>
                     </div>
-                    <Button variant="outline" size="sm" className="text-xs">Conectar</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={handleConnectStone}
+                    >
+                      Conectar
+                    </Button>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -296,7 +347,14 @@ const Admin = () => {
                       <Database className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-pdv-green" />
                       <span className="text-xs sm:text-sm">Supabase</span>
                     </div>
-                    <Button variant="outline" size="sm" className="text-xs">Conectar</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={handleConnectSupabase}
+                    >
+                      Conectar
+                    </Button>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -304,7 +362,14 @@ const Admin = () => {
                       <Rocket className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-black" />
                       <span className="text-xs sm:text-sm">Vercel</span>
                     </div>
-                    <Button variant="outline" size="sm" className="text-xs">Conectar</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={handleConnectVercel}
+                    >
+                      Conectar
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -359,6 +424,85 @@ const Admin = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Diálogos de Integração */}
+      <Dialog open={openStoneDialog} onOpenChange={setOpenStoneDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conectar Stone Pagamentos</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-4">Para conectar a Stone Pagamentos, você precisa:</p>
+            <ol className="list-decimal list-inside space-y-2">
+              <li>Ter uma conta ativa na Stone</li>
+              <li>Ter acesso às credenciais de API da Stone</li>
+              <li>Configurar seu terminal de pagamentos</li>
+            </ol>
+            <div className="mt-4 p-4 bg-gray-100 rounded-md">
+              <p className="text-sm">Você será redirecionado para a página de configuração da Stone.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenStoneDialog(false)}>Cancelar</Button>
+            <Button onClick={() => {
+              toast.success("Redirecionando para a página da Stone");
+              setOpenStoneDialog(false);
+              navigate("/admin/settings/stone");
+            }}>Continuar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openSupabaseDialog} onOpenChange={setOpenSupabaseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conectar Supabase</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-4">Para conectar ao Supabase, você precisa:</p>
+            <ol className="list-decimal list-inside space-y-2">
+              <li>Ter um projeto Supabase criado</li>
+              <li>Ter a URL e a chave de API do seu projeto</li>
+            </ol>
+            <div className="mt-4 p-4 bg-gray-100 rounded-md">
+              <p className="text-sm">Esta integração permite sincronizar dados com o Supabase e utilizar recursos avançados de banco de dados.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenSupabaseDialog(false)}>Cancelar</Button>
+            <Button onClick={() => {
+              toast.success("Supabase conectado com sucesso!");
+              setOpenSupabaseDialog(false);
+            }}>Conectar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openVercelDialog} onOpenChange={setOpenVercelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conectar Vercel</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-4">Para conectar a Vercel, você precisa:</p>
+            <ol className="list-decimal list-inside space-y-2">
+              <li>Ter uma conta Vercel</li>
+              <li>Autorizar acesso à sua conta</li>
+              <li>Selecionar o projeto para deploy</li>
+            </ol>
+            <div className="mt-4 p-4 bg-gray-100 rounded-md">
+              <p className="text-sm">Esta integração permite fazer deploy automático da sua aplicação na Vercel.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenVercelDialog(false)}>Cancelar</Button>
+            <Button onClick={() => {
+              toast.success("Vercel conectado com sucesso!");
+              setOpenVercelDialog(false);
+            }}>Conectar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

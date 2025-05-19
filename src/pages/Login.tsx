@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ThumbsUp, Home, UserPlus, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -17,11 +19,50 @@ const Login = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [debugMessage, setDebugMessage] = useState("");
 
+  // Verificar se já existe uma sessão válida ao carregar a página
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        // Verificar localstorage primeiro como fallback
+        let localSession = null;
+        try {
+          const sessionStr = localStorage.getItem("supabase_auth_session");
+          if (sessionStr) {
+            localSession = JSON.parse(sessionStr);
+            if (localSession?.session?.access_token) {
+              // Tentar restaurar a sessão no cliente Supabase
+              await supabase.auth.setSession({
+                access_token: localSession.session.access_token,
+                refresh_token: localSession.session.refresh_token
+              });
+              navigate("/admin");
+              return;
+            }
+          }
+        } catch (localErr) {
+          console.error("Erro ao verificar sessão local:", localErr);
+        }
+
+        // Verificar com o Supabase
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          // Usuário já está autenticado, redirecionar para admin
+          navigate("/admin");
+        }
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
+      }
+    };
+
+    checkSession();
+  }, [navigate]);
+
   // Debug helper
   const addDebug = message => {
     console.log(message);
     setDebugMessage(prev => prev + "\n" + message);
   };
+
   const handleLogin = async e => {
     e.preventDefault();
     if (!email || !password) {
@@ -151,16 +192,20 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
   const handleVote = () => {
     setVoteCount(prev => prev + 1);
     toast.success(`Obrigado pelo seu voto! Total: ${voteCount + 1}`);
   };
+  
   const handleGoHome = () => {
     navigate("/");
   };
+  
   const toggleAuthMode = () => {
     setIsRegister(!isRegister);
   };
+  
   const toggleDebugMode = () => {
     setDebugMode(prev => !prev);
     if (!debugMode) {
@@ -170,6 +215,7 @@ const Login = () => {
       });
     }
   };
+
   return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
@@ -196,7 +242,9 @@ const Login = () => {
               </Button>
               
               <div className="text-center mt-4">
-                
+                <Button type="button" variant="link" onClick={toggleAuthMode}>
+                  {isRegister ? "Já tem uma conta? Entre" : "Não tem uma conta? Registre-se"}
+                </Button>
               </div>
               
               {debugMode && <div className="mt-4 p-2 bg-gray-100 rounded text-xs font-mono text-gray-800 max-h-40 overflow-y-auto">
@@ -237,4 +285,5 @@ const Login = () => {
       </div>
     </div>;
 };
+
 export default Login;
