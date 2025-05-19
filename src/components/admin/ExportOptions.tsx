@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, FileExcel, FilePdf, Share2 } from "lucide-react";
+import { Download, FileText, File, FilePdf, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface ExportOptionsProps {
@@ -101,7 +101,7 @@ export function ExportOptions({ exportData, filename }: ExportOptionsProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={exportToExcel}>
-          <FileExcel className="mr-2 h-4 w-4" /> Excel
+          <File className="mr-2 h-4 w-4" /> Excel
         </DropdownMenuItem>
         <DropdownMenuItem onClick={exportToPDF}>
           <FilePdf className="mr-2 h-4 w-4" /> PDF
