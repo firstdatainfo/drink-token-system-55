@@ -5,17 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/admin/Layout";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Loader2, Calendar, RefreshCcw } from "lucide-react";
+import { Receipt, Loader2, Calendar, RefreshCcw, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ExportOptions } from "@/components/admin/ExportOptions";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { useSalesData, OrderStatus } from "@/hooks/useSalesData";
 
 const SoldTickets = () => {
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 7),  // Últimos 7 dias por padrão
     end: new Date()
   });
+
+  const { updateOrderStatusMutation } = useSalesData();
 
   // Consulta para obter os pedidos e itens dos pedidos
   const { data: ticketSales, isLoading, refetch } = useQuery({
@@ -92,14 +101,29 @@ const SoldTickets = () => {
   };
   
   // Calcular totais
-  const totalSales = ticketSales?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+  const totalSales = ticketSales?.reduce((sum, order) => 
+    order.status === 'completed' ? sum + Number(order.total_amount) : sum, 0) || 0;
+  
   const totalTickets = ticketSales?.reduce((sum, order) => 
-    sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0), 0) || 0;
+    order.status === 'completed' ? 
+    sum + order.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0) : sum, 0) || 0;
 
   // Função para recarregar dados manualmente
   const handleRefresh = () => {
     refetch();
     toast.success("Dados atualizados");
+  };
+  
+  // Função para atualizar status de um pedido
+  const handleUpdateStatus = (orderId: number, newStatus: OrderStatus) => {
+    updateOrderStatusMutation.mutate(
+      { orderId, status: newStatus },
+      {
+        onSuccess: () => {
+          refetch();
+        }
+      }
+    );
   };
 
   // Buscar dados ao montar o componente
@@ -121,8 +145,14 @@ const SoldTickets = () => {
             size="sm"
             onClick={handleRefresh}
             className="mr-2"
+            disabled={isLoading}
           >
-            <RefreshCcw className="h-4 w-4 mr-2" /> Atualizar
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4 mr-2" />
+            )}
+            Atualizar
           </Button>
           
           <ExportOptions 
@@ -222,14 +252,54 @@ const SoldTickets = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-blue-600">R$ {Number(order.total_amount).toFixed(2)}</p>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        order.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                        order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {order.status === 'completed' ? 'Concluído' : 
-                         order.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
-                      </span>
+                      <div className="flex items-center mt-1">
+                        <span className={`px-2 py-1 rounded-full text-xs mr-2 ${
+                          order.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {order.status === 'completed' ? 'Concluído' : 
+                           order.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
+                        </span>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              {updateOrderStatusMutation.isPending && updateOrderStatusMutation.variables?.orderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <span className="text-xs">Status</span>
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={() => handleUpdateStatus(order.id, 'completed')}
+                              disabled={order.status === 'completed'}
+                              className="text-green-600"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Concluído
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleUpdateStatus(order.id, 'pending')}
+                              disabled={order.status === 'pending'}
+                              className="text-yellow-600"
+                            >
+                              <AlertCircle className="mr-2 h-4 w-4" />
+                              Pendente
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleUpdateStatus(order.id, 'cancelled')}
+                              disabled={order.status === 'cancelled'}
+                              className="text-red-600"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Cancelado
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
                   <div className="p-4">
