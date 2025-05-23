@@ -8,12 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, ImageIcon, Image, UploadCloud } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ImageIcon, Image, UploadCloud, Brain } from "lucide-react";
 import { toast } from "sonner";
 import { Product, Category } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { useNavigate } from "react-router-dom";
+
 const Products = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
@@ -28,6 +30,7 @@ const Products = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch products from Supabase
   const {
@@ -307,9 +310,17 @@ const Products = () => {
   return <Layout>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciar Produtos</h1>
-        <Button onClick={() => handleAddEdit()} className="bg-pdv-green hover:bg-pdv-green/90">
-          <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
-        </Button>
+        <div className="flex space-x-3">
+          <Button 
+            onClick={() => navigate("/admin/product-ai")} 
+            className="bg-pdv-blue hover:bg-pdv-blue/90"
+          >
+            <Brain className="mr-2 h-4 w-4" /> Cadastrar com IA
+          </Button>
+          <Button onClick={() => handleAddEdit()} className="bg-pdv-green hover:bg-pdv-green/90">
+            <Plus className="mr-2 h-4 w-4" /> Adicionar Manual
+          </Button>
+        </div>
       </div>
       
       <Card>
