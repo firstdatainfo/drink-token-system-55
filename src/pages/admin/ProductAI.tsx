@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/admin/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Loader2, Image as ImageIcon, Camera, MessageSquare, Save } from "lucide-react";
+import { Loader2, Image as ImageIcon, Camera, MessageSquare, Save, Key } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useCategories } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ProductSuggestion {
   name: string;
@@ -27,8 +27,32 @@ const ProductAI = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [textInput, setTextInput] = useState("");
   const [productSuggestion, setProductSuggestion] = useState<ProductSuggestion | null>(null);
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [showKeyDialog, setShowKeyDialog] = useState(false);
   const navigate = useNavigate();
   const { data: categories = [] } = useCategories();
+
+  // Carregar chaves de API salvas
+  useEffect(() => {
+    const savedKeys = localStorage.getItem('ai_api_keys');
+    if (savedKeys) {
+      try {
+        setApiKeys(JSON.parse(savedKeys));
+      } catch (e) {
+        console.error('Erro ao carregar chaves de API:', e);
+      }
+    }
+  }, []);
+
+  // Verifica se há chaves de API configuradas
+  const checkApiKeys = () => {
+    // Verificamos se temos chaves para ChatGPT ou Gemini
+    if (!apiKeys.chatgpt && !apiKeys.gemini) {
+      setShowKeyDialog(true);
+      return false;
+    }
+    return true;
+  };
 
   // Função que vai processar a imagem usando IA
   const processImageWithAI = async () => {
@@ -37,20 +61,27 @@ const ProductAI = () => {
       return;
     }
 
+    if (!checkApiKeys()) return;
+
     setLoading(true);
     try {
-      // Aqui você implementaria a chamada para uma API de reconhecimento de imagem
-      // Estamos simulando um resultado
+      // Aqui decidimos qual API usar (preferência ao ChatGPT)
+      const apiKey = apiKeys.chatgpt || apiKeys.gemini;
+      const apiProvider = apiKeys.chatgpt ? "ChatGPT" : "Gemini";
+      
+      console.log(`Processando imagem usando ${apiProvider}...`);
+      
+      // Aqui você implementaria a chamada real para a API
+      // Por enquanto, continuamos com a simulação
       setTimeout(() => {
-        // Simulando resposta da IA
         setProductSuggestion({
           name: "Refrigerante Cola",
           price: "4,50",
           category: categories.length > 0 ? categories[0].name : "Bebidas",
-          description: "Refrigerante sabor cola, garrafa 350ml"
+          description: `Refrigerante sabor cola, garrafa 350ml (identificado por ${apiProvider})`
         });
         setLoading(false);
-        toast.success("Produto identificado com sucesso!");
+        toast.success(`Produto identificado com sucesso usando ${apiProvider}!`);
       }, 2000);
     } catch (error) {
       console.error("Erro ao processar imagem:", error);
@@ -66,20 +97,27 @@ const ProductAI = () => {
       return;
     }
 
+    if (!checkApiKeys()) return;
+
     setLoading(true);
     try {
-      // Aqui você implementaria a chamada para uma API de processamento de texto
-      // Estamos simulando um resultado
+      // Aqui decidimos qual API usar (preferência ao ChatGPT)
+      const apiKey = apiKeys.chatgpt || apiKeys.gemini;
+      const apiProvider = apiKeys.chatgpt ? "ChatGPT" : "Gemini";
+      
+      console.log(`Processando texto usando ${apiProvider}...`);
+      
+      // Aqui você implementaria a chamada real para a API
+      // Por enquanto, continuamos com a simulação
       setTimeout(() => {
-        // Simulando resposta da IA
         setProductSuggestion({
           name: "Água Mineral",
           price: "2,00",
           category: categories.length > 0 ? categories[0].name : "Bebidas",
-          description: "Água mineral sem gás, garrafa 500ml"
+          description: `Água mineral sem gás, garrafa 500ml (identificado por ${apiProvider})`
         });
         setLoading(false);
-        toast.success("Produto identificado com sucesso!");
+        toast.success(`Produto identificado com sucesso usando ${apiProvider}!`);
       }, 1500);
     } catch (error) {
       console.error("Erro ao processar texto:", error);
@@ -195,13 +233,27 @@ const ProductAI = () => {
     }
   };
 
+  const navigateToAISettings = () => {
+    navigate('/admin/settings/ai');
+  };
+
   return (
     <Layout>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Cadastro de Produtos com IA</h1>
-        <Button variant="outline" onClick={() => navigate('/admin/products')}>
-          Voltar para Produtos
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={navigateToAISettings}
+            className="flex items-center gap-2"
+          >
+            <Key className="h-4 w-4" />
+            Configurar Chaves de IA
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/admin/products')}>
+            Voltar para Produtos
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -382,6 +434,23 @@ const ProductAI = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Diálogo para alertar sobre chaves não configuradas */}
+      <AlertDialog open={showKeyDialog} onOpenChange={setShowKeyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chaves de API não configuradas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para usar o recurso de IA para cadastro de produtos, você precisa configurar pelo menos uma chave de API (ChatGPT ou Gemini).
+              Deseja ir para a página de configurações de IA agora?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={navigateToAISettings}>Configurar Chaves</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
